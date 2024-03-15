@@ -1,9 +1,12 @@
 /* eslint-disable */
 import React, { useState } from 'react';
-import styles from './style.module.css';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import WorldProject from './WorldProject';
+import styles from './App.module.css';
 import './App.css';
 
-function App() {
+const App = () => {
+  const navigate = useNavigate(); // useNavigate 호출
   const [buttonClickStatus, setButtonClickStatus] = useState({
     addNewWorld: false,
     edit: false,
@@ -19,10 +22,9 @@ function App() {
     // 모든 버튼 상태를 false로 설정하고, 클릭된 버튼만 true로 설정
     setButtonClickStatus({ ...buttonClickStatus, [buttonName]: true });
 
-    // 시간 지연 후에 클릭 상태 초기화
     setTimeout(() => {
       setButtonClickStatus({ ...buttonClickStatus, [buttonName]: false });
-    }, 100); // 예: 0.1초 후 클릭 상태 초기화
+    }, 100); // 0.1초 후 클릭된 버튼 상태를 false로 설정
   };
 
   const addNewWorld = () => {
@@ -70,6 +72,10 @@ function App() {
     }
   };
 
+  const handleDoubleClick = (worldId) => {
+    navigate(`/world/${worldId}`); // navigate 함수 사용
+  };
+
   return (
       <div className="unselectable">
           <div id="worldCountDisplay">{worldCount} World</div>
@@ -113,7 +119,8 @@ function App() {
                   {worlds.map((world) => (
                       <button key={world.id} 
                       className={`world-button ${selectedWorldId === world.id ? 'worldOutline' : ''}`} 
-                      onClick={() => selectWorld(world.id)}>
+                      onDoubleClick={handleDoubleClick}
+                      onClick={() => {selectWorld(world.id)}}>
                           <div className="world-name">{world.name}</div>
                           <div className="last-date">{world.lastEdit}</div>
                           <div className="world-page">{world.page}</div>
@@ -130,6 +137,9 @@ function App() {
                   autoFocus
               />
           )}
+      <Routes>
+        <Route path="/world/:worldId" element={<WorldProject />} />
+      </Routes>
       </div>
   );
 }
