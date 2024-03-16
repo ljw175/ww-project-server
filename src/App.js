@@ -1,8 +1,9 @@
 /* eslint-disable */
+import axios from 'axios';
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
+import HomePage from './HomePage';
 import WorldProject from './WorldProject';
-import styles from './App.module.css';
 import './App.css';
 
 const App = () => {
@@ -27,15 +28,21 @@ const App = () => {
     }, 100); // 0.1초 후 클릭된 버튼 상태를 false로 설정
   };
 
-  const addNewWorld = () => {
-      const newWorld = {
-          id: worldCount + 1,
-          name: 'New World',
-          lastEdit: 'No history of edit',
-          page: '0 Page',
-      };
-      setWorlds([...worlds, newWorld]);
+  const addNewWorld = async () => {
+    const newWorldData = {
+      name: `New World ${worldCount + 1}`,
+      lastEdit: 'Just now',
+      page: '1 Page',
+    };
+  
+    try {
+      const response = await axios.post('/api/worlds', newWorldData);
+      const savedWorld = response.data;
+      setWorlds([...worlds, savedWorld]);
       setWorldCount(worldCount + 1);
+    } catch (error) {
+      console.error("Error adding new world", error);
+    }
   };
 
   const selectWorld = (id) => {
@@ -61,7 +68,6 @@ const App = () => {
     color: selectedWorldId ? 'black' : '#909090', // 조건에 따른 색상 변경
   };
 
-
   const deleteSelectedWorld = () => {
     const isConfirmed = window.confirm("Are you sure you want to delete this world?");
     if (isConfirmed) {
@@ -77,69 +83,28 @@ const App = () => {
   };
 
   return (
-      <div className="unselectable">
-          <div id="worldCountDisplay">{worldCount} World</div>
-          <div className="container">
-              <div className="main-buttons">
-
-                  <button 
-                  onClick={() => {
-                    addNewWorld();
-                    handleButtonClick('addNewWorld');
-                }}
-                  className={`${styles.addNewWorldButton} ${buttonClickStatus.addNewWorld ? styles.buttonClicked : ''}`}
-                  >
-                    +New
-                  </button>
-
-                  <button 
-                  onClick={() => {
-                    setIsEditMode(true);
-                    handleButtonClick('setIsEditMode');
-                }}
-                  className={`${styles.editModeButton} ${buttonClickStatus.edit ? styles.buttonClicked : ''}`}
-                  style={clickableButtonStyle}
-                  >
-                    Edit
-                  </button>
-
-                  <button 
-                  onClick={() => {
-                    deleteSelectedWorld();
-                    handleButtonClick('deleteSelectedWorld');
-                }}
-                  className={`${styles.deleteWorldButton} ${buttonClickStatus.delete ? styles.buttonClicked : ''}`}
-                  style={clickableButtonStyle}
-                  >
-                    Delete
-                  </button>
-
-              </div>
-              <div id="worldContainer">
-                  {worlds.map((world) => (
-                      <button key={world.id} 
-                      className={`world-button ${selectedWorldId === world.id ? 'worldOutline' : ''}`} 
-                      onDoubleClick={handleDoubleClick}
-                      onClick={() => {selectWorld(world.id)}}>
-                          <div className="world-name">{world.name}</div>
-                          <div className="last-date">{world.lastEdit}</div>
-                          <div className="world-page">{world.page}</div>
-                      </button>
-                  ))}
-              </div>
-          </div>
-          {isEditMode && selectedWorldId && (
-              <input
-                  type="text"
-                  value={worlds.find(world => world.id === selectedWorldId)?.name || ''}
-                  onChange={(e) => editSelectedWorld(e.target.value)}
-                  onBlur={() => setIsEditMode(false)}
-                  autoFocus
-              />
-          )}
-      <Routes>
-        <Route path="/world/:worldId" element={<WorldProject />} />
-      </Routes>
+      <div>
+        <Routes>
+          <Route 
+            path="/" 
+            element={<HomePage 
+            buttonClickStatus={buttonClickStatus}
+            worldCount={worldCount} 
+            worlds={worlds}
+            selectedWorldId={selectedWorldId}
+            isEditMode={isEditMode}
+            setIsEditMode={setIsEditMode}
+            handleButtonClick={handleButtonClick}
+            addNewWorld={addNewWorld}
+            selectWorld={selectWorld} 
+            editSelectedWorld={editSelectedWorld}
+            clickableButtonStyle={clickableButtonStyle}
+            deleteSelectedWorld={deleteSelectedWorld}
+            handleDoubleClick={handleDoubleClick} />} />
+          <Route 
+            path="/world/:worldId" 
+            element={<WorldProject />} />
+        </Routes>
       </div>
   );
 }

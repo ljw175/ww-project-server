@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import './WorldProject.css';
 
 const WorldProject = () => {
   const { worldId } = useParams();
@@ -11,6 +12,17 @@ const WorldProject = () => {
   });
 
   useEffect(() => {
+    const fetchWorldData = async () => {
+      try {
+        const response = await axios.get(`/api/worlds/${worldId}`);
+        setWorldData(response.data);
+      } catch (error) {
+        console.error("Error fetching world data", error);
+      }
+    };
+
+    fetchWorldData();
+    
     axios.get(`/api/worlds/${worldId}`)
       .then(response => {
         setWorldData(response.data);
@@ -27,7 +39,7 @@ const WorldProject = () => {
   };
 
   const saveWorldData = () => {
-    axios.post('/api/worlds', worldData)
+    axios.post(`/api/worlds/${worldId}`, worldData)
     .then(response => {
       console.log('World data saved successfully:', response.data);
       // 성공적으로 저장된 후의 로직을 여기에 작성할 수 있습니다.
