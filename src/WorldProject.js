@@ -4,7 +4,7 @@ import axios from 'axios';
 import './WorldProject.css';
 
 const WorldProject = () => {
-  const { worldId } = useParams();
+  const { worldName } = useParams();
   const [worldData, setWorldData] = useState({
     name: '',
     description: '',
@@ -14,7 +14,7 @@ const WorldProject = () => {
   useEffect(() => {
     const fetchWorldData = async () => {
       try {
-        const response = await axios.get(`/api/worlds/${worldId}`);
+        const response = await axios.get(`/api/worlds/${worldName}`);
         setWorldData(response.data);
       } catch (error) {
         console.error("Error fetching world data", error);
@@ -23,7 +23,7 @@ const WorldProject = () => {
 
     fetchWorldData();
     
-    axios.get(`/api/worlds/${worldId}`)
+    axios.get(`/api/worlds/${worldName}`)
       .then(response => {
         setWorldData(response.data);
       })
@@ -31,7 +31,7 @@ const WorldProject = () => {
         console.error("Error fetching or creating new world data:", error);
         // 데이터를 불러오지 못했을 때의 처리 로직 (여기서는 기본 상태를 이미 설정했음)
       });
-  }, [worldId]);
+  }, [worldName]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +39,7 @@ const WorldProject = () => {
   };
 
   const saveWorldData = () => {
-    axios.post(`/api/worlds/${worldId}`, worldData)
+    axios.post(`/api/worlds/${worldName}`, worldData)
     .then(response => {
       console.log('World data saved successfully:', response.data);
       // 성공적으로 저장된 후의 로직을 여기에 작성할 수 있습니다.

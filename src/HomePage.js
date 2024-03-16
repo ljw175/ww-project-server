@@ -3,9 +3,10 @@ import axios from 'axios';
 import styles from './App.module.css';
 import './App.css';
 
-const HomePage = ({ buttonClickStatus,
+const HomePage = ({ 
+  buttonClickStatus,
   worldCount, 
-  selectedWorldId,
+  selectedWorldName,
   isEditMode,
   setIsEditMode,
   handleButtonClick,
@@ -34,7 +35,7 @@ const HomePage = ({ buttonClickStatus,
     };
 
     fetchWorlds();
-  }, []);
+  }, [worlds]);
 
   return (
     <div className="unselectable">
@@ -77,10 +78,10 @@ const HomePage = ({ buttonClickStatus,
               </div>
               <div id="worldContainer">
                     {worlds.map(world => (
-                        <button key={world.id} 
-                        onDoubleClick={() => handleDoubleClick(world.id)}
-                        onClick={() => {selectWorld(world.id)}}
-                        className={`world-button ${selectedWorldId === world.id ? 'worldOutline' : ''}`}>
+                        <button key={world.Name} 
+                        onDoubleClick={() => handleDoubleClick(world.Name)}
+                        onClick={() => {selectWorld(world.Name)}}
+                        className={`world-button ${selectedWorldName === world.Name ? 'worldOutline' : ''}`}>
                             <div className="world-name">{world.name}</div>
                             <div className="last-date">{world.lastEdit}</div>
                             <div className="world-page">{world.page}</div>
@@ -88,10 +89,10 @@ const HomePage = ({ buttonClickStatus,
                     ))}
               </div>
           </div>
-          {isEditMode && selectedWorldId && (
+          {isEditMode && selectedWorldName && (
               <input
                   type="text"
-                  value={worlds.find(world => world.id === selectedWorldId)?.name || ''}
+                  value={worlds.find(world => world.Name === selectedWorldName)?.name || ''}
                   onChange={(e) => editSelectedWorld(e.target.value)}
                   onBlur={() => setIsEditMode(false)}
                   autoFocus
