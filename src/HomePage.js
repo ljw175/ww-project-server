@@ -1,112 +1,93 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
+import {
+  addNewWorld as addNewWorldAction,
+  selectWorld as selectWorldAction,
+  editSelectedWorld as editSelectedWorldAction,
+  deleteSelectedWorld as deleteSelectedWorldAction,
+  setButtonClickStatus as setButtonClickStatusAction,
+  setWorlds
+} from './types/actions'; // Ensure the correct path to your actions file
 import styles from './App.module.css';
 import './App.css';
 
-const HomePage = ({ 
-  buttonClickStatus,
-  worldCount, 
-  setWorldCount,
-  selectedWorldName,
-  isEditMode,
-  setIsEditMode,
-  handleButtonClick,
-  addNewWorld,
-  selectWorld, 
-  editSelectedWorld,
-  clickableButtonStyle,
-  deleteSelectedWorld,
-  handleDoubleClick }) => {
-    const [worlds, setWorlds] = useState([]);
+const HomePage = () => {
+  const dispatch = useDispatch();
 
+  // Accessing Redux state
+  const buttonClickStatus = useSelector(state => state.buttonClickStatus);
+  const worlds = useSelector(state => state.worlds || []); // Ensure worlds is always an array
+  const worldCount = worlds.length;
+  const selectedWorldName = useSelector(state => state.selectedWorldName);
+  const isEditMode = useSelector(state => state.isEditMode);
+
+  // Fetch worlds on component mount
   useEffect(() => {
     const fetchWorlds = async () => {
       try {
-        const response = await axios.get('/api/worlds');
-        console.log(response.data); // 응답 데이터 확인
-        if (Array.isArray(response.data)) {
-          setWorlds(response.data);
+        const { data } = await axios.get('/api/worlds');
+        if (Array.isArray(data)) {
+          dispatch(setWorlds(data)); // Use the new action to set worlds
         } else {
-          console.error("Received data is not an array:", response.data);
-          setWorlds([]); // 응답이 배열이 아니면 빈 배열로 설정
+          console.error("Received data is not an array:", data);
         }
       } catch (error) {
-        console.error("Error fetching worlds", error);
+        console.error("Error fetching worlds:", error);
       }
     };
-    setWorldCount(worlds.length);
+
     fetchWorlds();
-  }, [worlds]);
+  }, [dispatch]);
+
+  // Handler for button click actions, replace this with your actual logic
+  const handleButtonClick = (actionType) => {
+    dispatch(setButtonClickStatusAction(actionType, true));
+    setTimeout(() => dispatch(setButtonClickStatusAction(actionType, false)), 100);
+  };
 
   return (
     <div className="unselectable">
-          <div id="worldCountDisplay">{worldCount} World</div>
-          <div className="container">
-              <div className="main-buttons">
-
-                  <button 
-                  onMouseDown={() => {
-                    handleButtonClick('addNewWorld');
-                }}
-                  onMouseUp={() => {
-                    addNewWorld();
-                }}
-
-                  className={`${styles.addNewWorldButton} ${buttonClickStatus.addNewWorld ? styles.buttonClicked : ''}`}
-                  >
-                    +New
-                  </button>
-
-                  <button 
-                  onMouseDown={() => {
-                    handleButtonClick('setIsEditMode');
-                }}
-                  onMouseUp={() => {
-                    setIsEditMode(true);
-                }}
-                  className={`${styles.editModeButton} ${buttonClickStatus.setIsEditMode ? styles.buttonClicked : ''}`}
-                  style={clickableButtonStyle}
-                  >
-                    Edit
-                  </button>
-
-                  <button 
-                  onMouseDown={() => {
-                    handleButtonClick('deleteSelectedWorld');
-                }}
-                  onMouseUp={() => {
-                    deleteSelectedWorld();
-                }}
-                  className={`${styles.deleteWorldButton} ${buttonClickStatus.deleteSelectedWorld ? styles.buttonClicked : ''}`}
-                  style={clickableButtonStyle}
-                  >
-                    Delete
-                  </button>
-
-              </div>
-              <div id="worldContainer">
-                    {worlds.map(world => (
-                        <button key={world.name} 
-                        onDoubleClick={() => handleDoubleClick(world.name)}
-                        onClick={() => {selectWorld(world.name)}}
-                        className={`world-button ${selectedWorldName === world.name ? 'worldOutline' : ''}`}>
-                            <div className="world-name">{world.name}</div>
-                            <div className="last-date">{world.lastEdit}</div>
-                            <div className="world-page">{world.page}</div>
-                        </button>
-                    ))}
-              </div>
-          </div>
-          {isEditMode && selectedWorldName && (
-              <input
-                  type="text"
-                  value={worlds.find(world => world.name === selectedWorldName)?.name || ''}
-                  onChange={(e) => editSelectedWorld(e.target.value)}
-                  onBlur={() => setIsEditMode(false)}
-                  autoFocus
-              />
-          )}
+      <div id="worldCountDisplay">{worldCount} Worlds</div>
+      <div className="container">
+        <div className="main-buttons">
+          <button
+            onMouseDown={() => handleButtonClick('addNewWorld')}
+            onMouseUp={() => dispatch(addNewWorldAction())}
+            className={`${styles.addNewWorldButton} ${buttonClickStatus.addNewWorld ? styles.buttonClicked : ''}`}
+          >
+            +New
+          </button>
+          <button
+            onMouseDown={() => handleButtonClick('editSelectedWorld')}
+            onMouseUp={() => isEditMode && selectedWorldName ? dispatch(editSelectedWorldAction(selectedWorldName)) : null}
+            className={`${styles.editModeButton} ${buttonClickStatus.editSelectedWorld ? styles.buttonClicked : ''}`}
+          >
+            Edit
+          </button>
+          <button
+            onMouseDown={() => handleButtonClick('deleteSelectedWorld')}
+            onMouseUp={() => selectedWorldName ? dispatch(deleteSelectedWorldAction(selectedWorldName)) : null}
+            className={`${styles.deleteWorldButton} ${buttonClickStatus.deleteSelectedWorld ? styles.buttonClicked : ''}`}
+          >
+            Delete
+          </button>
+        </div>
+        <div id="worldContainer">
+          {worlds.map(world => (
+            <button
+              key={world.name}
+              onClick={() => dispatch(selectWorldAction(world.name))}
+              className={`world-button ${selectedWorldName === world.name ? 'worldOutline' : ''}`}
+            >
+              <div className="world-name">{world.name}</div>
+              <div className="last-date">{world.lastEdit}</div>
+              <div className="world-page">{world.page}</div>
+            </button>
+          ))}
+        </div>
       </div>
+    </div>
   );
 };
 
