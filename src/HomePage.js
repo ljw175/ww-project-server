@@ -6,6 +6,7 @@ import './App.css';
 const HomePage = ({ 
   buttonClickStatus,
   worldCount, 
+  setWorldCount,
   selectedWorldName,
   isEditMode,
   setIsEditMode,
@@ -33,7 +34,7 @@ const HomePage = ({
         console.error("Error fetching worlds", error);
       }
     };
-
+    setWorldCount(worlds.length);
     fetchWorlds();
   }, [worlds]);
 
@@ -44,32 +45,39 @@ const HomePage = ({
               <div className="main-buttons">
 
                   <button 
-                  onClick={() => {
-                    addNewWorld();
+                  onMouseDown={() => {
                     handleButtonClick('addNewWorld');
                 }}
+                  onMouseUp={() => {
+                    addNewWorld();
+                }}
+
                   className={`${styles.addNewWorldButton} ${buttonClickStatus.addNewWorld ? styles.buttonClicked : ''}`}
                   >
                     +New
                   </button>
 
                   <button 
-                  onClick={() => {
-                    setIsEditMode(true);
+                  onMouseDown={() => {
                     handleButtonClick('setIsEditMode');
                 }}
-                  className={`${styles.editModeButton} ${buttonClickStatus.edit ? styles.buttonClicked : ''}`}
+                  onMouseUp={() => {
+                    setIsEditMode(true);
+                }}
+                  className={`${styles.editModeButton} ${buttonClickStatus.setIsEditMode ? styles.buttonClicked : ''}`}
                   style={clickableButtonStyle}
                   >
                     Edit
                   </button>
 
                   <button 
-                  onClick={() => {
-                    deleteSelectedWorld();
+                  onMouseDown={() => {
                     handleButtonClick('deleteSelectedWorld');
                 }}
-                  className={`${styles.deleteWorldButton} ${buttonClickStatus.delete ? styles.buttonClicked : ''}`}
+                  onMouseUp={() => {
+                    deleteSelectedWorld();
+                }}
+                  className={`${styles.deleteWorldButton} ${buttonClickStatus.deleteSelectedWorld ? styles.buttonClicked : ''}`}
                   style={clickableButtonStyle}
                   >
                     Delete
@@ -78,10 +86,10 @@ const HomePage = ({
               </div>
               <div id="worldContainer">
                     {worlds.map(world => (
-                        <button key={world.Name} 
-                        onDoubleClick={() => handleDoubleClick(world.Name)}
-                        onClick={() => {selectWorld(world.Name)}}
-                        className={`world-button ${selectedWorldName === world.Name ? 'worldOutline' : ''}`}>
+                        <button key={world.name} 
+                        onDoubleClick={() => handleDoubleClick(world.name)}
+                        onClick={() => {selectWorld(world.name)}}
+                        className={`world-button ${selectedWorldName === world.name ? 'worldOutline' : ''}`}>
                             <div className="world-name">{world.name}</div>
                             <div className="last-date">{world.lastEdit}</div>
                             <div className="world-page">{world.page}</div>
@@ -92,7 +100,7 @@ const HomePage = ({
           {isEditMode && selectedWorldName && (
               <input
                   type="text"
-                  value={worlds.find(world => world.Name === selectedWorldName)?.name || ''}
+                  value={worlds.find(world => world.name === selectedWorldName)?.name || ''}
                   onChange={(e) => editSelectedWorld(e.target.value)}
                   onBlur={() => setIsEditMode(false)}
                   autoFocus

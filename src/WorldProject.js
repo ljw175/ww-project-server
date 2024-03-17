@@ -4,7 +4,8 @@ import axios from 'axios';
 import './WorldProject.css';
 
 const WorldProject = () => {
-  const { worldName } = useParams();
+  const { name } = useParams();
+  const [projectName, setProjectName] = useState("");
   const [worldData, setWorldData] = useState({
     name: '',
     description: '',
@@ -14,7 +15,9 @@ const WorldProject = () => {
   useEffect(() => {
     const fetchWorldData = async () => {
       try {
-        const response = await axios.get(`/api/worlds/${worldName}`);
+        const response = await axios.get(`/api/worlds/${name}`);
+        // URL에서 추출한 name을 상태에 저장
+        setProjectName(name);
         setWorldData(response.data);
       } catch (error) {
         console.error("Error fetching world data", error);
@@ -23,15 +26,17 @@ const WorldProject = () => {
 
     fetchWorldData();
     
-    axios.get(`/api/worlds/${worldName}`)
+    axios.get(`/api/worlds/${name}`)
       .then(response => {
+        const data = response.data;
+        setProjectName(data.name); // 받아온 데이터로 projectName 상태 업데이트
         setWorldData(response.data);
       })
       .catch(error => {
         console.error("Error fetching or creating new world data:", error);
         // 데이터를 불러오지 못했을 때의 처리 로직 (여기서는 기본 상태를 이미 설정했음)
       });
-  }, [worldName]);
+  }, [name]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +44,7 @@ const WorldProject = () => {
   };
 
   const saveWorldData = () => {
-    axios.post(`/api/worlds/${worldName}`, worldData)
+    axios.post(`/api/worlds/${name}`, worldData)
     .then(response => {
       console.log('World data saved successfully:', response.data);
       // 성공적으로 저장된 후의 로직을 여기에 작성할 수 있습니다.
@@ -57,15 +62,15 @@ const WorldProject = () => {
       <h1>{worldData.name || "새로운 월드 프로젝트"}</h1>
       <input
         type="text"
-        name="name"
-        value={worldData.name}
-        onChange={handleInputChange}
+        name="projectName"
+        value={projectName}
+        onChange={(e) => setProjectName(e.target.value)}
         placeholder="월드 이름"
       />
       <textarea
-        name="description"
+        name="projectName"
         value={worldData.description}
-        onChange={handleInputChange}
+        onChange={(e) => setProjectName(e.target.value)}
         placeholder="월드 설명"
       />
       {/* 기타 입력 필드와 컨트롤 */}
