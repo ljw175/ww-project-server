@@ -6,11 +6,8 @@ export const EDIT_SELECTED_WORLD = 'EDIT_SELECTED_WORLD';
 export const DELETE_SELECTED_WORLD = 'DELETE_SELECTED_WORLD';
 // 액션 생성 함수 정의
 
-  export function setWorlds(worldsData) {
-    return {
-      type: SET_WORLDS,
-      payload: worldsData,
-    };
+  export function setWorlds(worlds) {
+    return { type: SET_WORLDS, payload: worlds };
   }
 
 // 버튼 클릭 상태 설정
@@ -52,3 +49,8 @@ export const DELETE_SELECTED_WORLD = 'DELETE_SELECTED_WORLD';
       payload: worldName,
     };
   }
+
+  export const setWorldData = worldData => ({
+    type: 'SET_WORLD_DATA',
+    payload: worldData,
+  });

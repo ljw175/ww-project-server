@@ -14,7 +14,7 @@ const initialState = {
     setIsEditMode: false,
     deleteSelectedWorld: false,
   },
-  worldCount: 0,
+  worldData: [],
   worlds: [],
   selectedWorldName: null,
   isEditMode: false,
@@ -27,7 +27,6 @@ function worldReducer(state = initialState, action) {
       return {
         ...state,
         worlds: action.payload, // Assuming payload is the array of worlds
-        worldCount: action.payload.length,
       };
     case SET_BUTTON_CLICK_STATUS:
       return {
@@ -41,7 +40,6 @@ function worldReducer(state = initialState, action) {
       return {
         ...state,
         worlds: [...state.worlds, action.payload],
-        worldCount: state.worldCount + 1,
       };
     case SELECT_WORLD:
       return {
@@ -60,8 +58,8 @@ function worldReducer(state = initialState, action) {
         ...state,
         worlds: state.worlds.filter(world => world.name !== action.payload),
         selectedWorldName: null,
-        worldCount: state.worldCount - 1,
       };
+
     default:
       return state;
   }
