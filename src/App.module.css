@@ -51,7 +51,7 @@
     background-color: #e0e0e0; /* 버튼의 배경색 */
   }
 
-  .buttonAbled {
+  .buttonClickabled {
     pointer-events: auto;
     color:#909090;
   }
