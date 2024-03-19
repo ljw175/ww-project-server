@@ -9,10 +9,6 @@ import './App.css';
 const App = () => {
   const navigate = useNavigate();
 
-  // Access state from Redux store using useSelector
-  const selectedWorldName = useSelector(state => state.selectedWorldName);
-  const isEditMode = useSelector(state => state.isEditMode);
-
   const handleDoubleClick = (name) => {
     navigate(`/worlds/${name}`);
   };

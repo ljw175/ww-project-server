@@ -61,11 +61,36 @@ const HomePage = ({ handleDoubleClick }) => {
     }
   };
 
-  const handleEditWorld = () => {
+  const handleEditWorld = async () => {
     if (selectedWorldName) {
-      // Implement logic to open editing interface for the selected world
-      // For instance, set a state here that controls the visibility of an edit form/modal
-      console.log(`Editing ${selectedWorldName}`); // Placeholder logic
+      // Example: Prompt the user for the new name (implement a more user-friendly approach in production)
+      const newName = window.prompt("Enter the new world name:", selectedWorldName);
+      if (!newName || newName.trim() === "" || newName === selectedWorldName) {
+        window.alert("Invalid or unchanged name.");
+        return;
+      }
+  
+      try {
+        const updatedWorld = { newName: newName.trim() }; // Assuming the backend expects this structure
+        await axios.put(`/api/worlds/${encodeURIComponent(selectedWorldName)}`, updatedWorld);
+        dispatch(editSelectedWorldAction(selectedWorldName, newName));
+        // Optionally, refetch worlds list to ensure UI is in sync with the DB
+      } catch (error) {
+        console.error("Error editing world", error);
+      }
+    }
+  };
+  
+
+  const handleDeleteWorld = async () => {
+    if (selectedWorldName && window.confirm(`Are you sure you want to delete ${selectedWorldName}?`)) {
+      try {
+        await axios.delete(`/api/worlds/${encodeURIComponent(selectedWorldName)}`);
+        dispatch(deleteSelectedWorldAction(selectedWorldName));
+        // Optionally, refetch worlds list to ensure UI is in sync with the DB
+      } catch (error) {
+        console.error("Error deleting world", error);
+      }
     }
   };
   
@@ -89,18 +114,14 @@ const HomePage = ({ handleDoubleClick }) => {
           </button>
           <button
             onMouseDown={() => handleButtonClick('editSelectedWorld')}
-            onMouseUp={() => handleEditWorld()}
+            onMouseUp={handleEditWorld}
             className={`${styles.editModeButton} ${selectedWorldName ? styles.buttonClickabled : ''} ${buttonClickStatus.editSelectedWorld ? styles.buttonClicked : ''}`}
           >
             Edit
           </button>
           <button
             onMouseDown={() => handleButtonClick('deleteSelectedWorld')}
-            onMouseUp={() => {
-              if (selectedWorldName && window.confirm(`Are you sure you want to delete ${selectedWorldName}?`)) {
-                dispatch(deleteSelectedWorldAction(selectedWorldName));
-              }
-            }}
+            onMouseUp={handleDeleteWorld}
             className={`${styles.deleteWorldButton} ${selectedWorldName ? styles.buttonClickabled : ''} ${buttonClickStatus.deleteSelectedWorld ? styles.buttonClicked : ''}`}
           >
             Delete

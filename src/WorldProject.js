@@ -64,7 +64,7 @@ const WorldProject = () => {
       const newMap = [...currentMap];
       const tile = newMap[rowIndex][tileIndex];
       if (!tile[type].find(item => item.name === newItem.name)) {
-        tile[type].push(newItem);
+        tile[type].push({ ...newItem });
       }
       return newMap;
     });
@@ -77,7 +77,6 @@ const WorldProject = () => {
       const tile = newMap[rowIndex][tileIndex];
       const newItem = {
         name: 'Unique Name', // This should be dynamically generated or input by the user
-        details: 'Details about the Character or Event',
       };
       
       switch (selectedOption) {
@@ -88,14 +87,12 @@ const WorldProject = () => {
           }
           break;
         case 'Character':
-          // Character 옵션이 선택되었을 때 Place가 있는 타일에만 배치 가능
-          if (tile.place) {
+          if (tileMap[rowIndex][tileIndex].place) {
             addCharacterOrEvent('characters', rowIndex, tileIndex, newItem);
           }
           break;
         case 'Event':
-          // Event 옵션이 선택되었을 때 Place가 있는 타일에만 배치 가능
-          if (tile.place) {
+          if (tileMap[rowIndex][tileIndex].place) {
             addCharacterOrEvent('events', rowIndex, tileIndex, newItem);
           }
           break;
