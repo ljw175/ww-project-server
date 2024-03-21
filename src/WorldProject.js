@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
 import { setWorldData } from './types/actions';
 import { createSelector } from 'reselect';
+import styles from './WorldProject.module.css';
 import './WorldProject.css';
 
 const createInitialTileMap = () => {
@@ -129,10 +130,10 @@ const WorldProject = () => {
   return (
     <div className='unselectable'>
       <div className="tabs">
-        {['World', 'State', 'System'].map((tab) => (
+        {['<-','World', 'State', 'System'].map((tab) => (
           <button
             key={tab}
-            className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+            className={`tab-button ${styles.modeButton} ${activeTab === tab ? 'active' : ''}`}
             onClick={() => handleTabClick(tab)}
           >
             {tab}

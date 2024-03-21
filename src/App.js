@@ -1,7 +1,6 @@
 /* eslint-disable */
 import React from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import HomePage from './HomePage';
 import WorldProject from './WorldProject';
 import './App.css';

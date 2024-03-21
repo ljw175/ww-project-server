@@ -1,0 +1,18 @@
+  .modeButton {
+    background-color: #f4f4f4; /* 버튼의 배경색 */
+    color: black;              /* 버튼의 텍스트 색상 */
+    border: none;              /* 버튼의 테두리 제거 */
+    width: 65px;
+    height: 39px;
+    line-height: 39px; /* 버튼 높이와 동일하게 설정하여 수직 중앙 정렬 */
+  }
+
+  .modeButton:hover {
+    cursor: pointer; /* 커서를 손가락 모양으로 변경 */
+  }
+
+  .buttonClicked {
+    text-decoration: solid;
+  }
+
+  
