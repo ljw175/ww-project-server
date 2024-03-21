@@ -6,10 +6,13 @@ import { setWorldData } from './types/actions';
 import { createSelector } from 'reselect';
 import styles from './WorldProject.module.css';
 import './WorldProject.css';
+import PlaceTile from './images/Place.png';
+import CharacterTile from './images/Character.png';
+import EventTile from './images/Event.png';
 
 const createInitialTileMap = () => {
-  // 여기서는 10x10 타일맵을 예로 들겠다.
-  const mapSize = 10;
+  // 여기서는 100x100 타일맵을 예로 들겠다.
+  const mapSize = 100;
   let initialMap = [];
 
   for (let row = 0; row < mapSize; row++) {
@@ -130,10 +133,10 @@ const WorldProject = () => {
   return (
     <div className='unselectable'>
       <div className="tabs">
-        {['<-','World', 'State', 'System'].map((tab) => (
+        {['->','Map', 'State', 'System'].map((tab) => (
           <button
             key={tab}
-            className={`tab-button ${styles.modeButton} ${activeTab === tab ? 'active' : ''}`}
+            className={`${styles.modeButton} ${activeTab === tab ? styles.buttonClicked : ''}`}
             onClick={() => handleTabClick(tab)}
           >
             {tab}
@@ -141,35 +144,39 @@ const WorldProject = () => {
         ))}
       </div>
       <div className="options">
-        {['Select', 'Place', 'Character', 'Event'].map((option) => (
+        {[`${styles.selectButton} Select`, 
+        `${styles.placeButton} Place`, 
+        `${styles.characterButton} Character`, 
+        `${styles.eventButton} Event`].map((option) => (
           <button
             key={option}
-            className={`option-button ${selectedOption === option ? 'selected' : ''}`}
+            className={`${styles.optionButton} ${selectedOption === option ? styles.buttonClicked : ''}`}
             onClick={() => handleOptionClick(option)}
           >
             {option}
           </button>
         ))}
       </div>
-      <div className="tilemap">
+  <div className={`tileMap-container ${styles.tileMapContainer}`}>
+      <div className={`tileMap ${styles.tileMap}`}>
         {tileMap.map((row, rowIndex) => (
-          <div key={rowIndex} className="tile-row">
+          <div key={rowIndex} className={`tile-row ${styles.tile-row}`}>
           {row.map((tile, tileIndex) => (
             <div
               key={tileIndex}
-              className="tile"
+              className={`tile ${styles.tile}`} // Use module CSS for base styling
               onClick={() => handleTileClick(rowIndex, tileIndex)}
               onDoubleClick={() => handleTileDoubleClick(rowIndex, tileIndex)}
-              style={{ width: '40px', height: '40px', border: '1px solid black', display: 'inline-block', margin: '2px' }} // Add visual styling
             >
               {/* Temporary visual indicator */}
-              {tile.place ? 'P' : ''}
-              {tile.characters ? 'C' : ''}
-              {tile.events ? 'E' : ''}
+              {tile.place && <img src={PlaceTile} alt="Place" className={styles.tileImage} />}
+              {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.tileImage} ${styles.overlay}`} />}
+              {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.tileImage} ${styles.overlay}`} />}
             </div>
-        ))}
-    </div>
-  ))}
+          ))}
+      </div>
+    ))}
+  </div>
 
         {isDetailPopupVisible && (
           <div className="detail-popup">

@@ -1,18 +1,99 @@
   .modeButton {
     background-color: #f4f4f4; /* 버튼의 배경색 */
     color: black;              /* 버튼의 텍스트 색상 */
+    font-size: 15px;
     border: none;              /* 버튼의 테두리 제거 */
-    width: 65px;
-    height: 39px;
-    line-height: 39px; /* 버튼 높이와 동일하게 설정하여 수직 중앙 정렬 */
+    width: auto;
+    height: 42px;
+    line-height: 42px; /* 버튼 높이와 동일하게 설정하여 수직 중앙 정렬 */
   }
 
   .modeButton:hover {
     cursor: pointer; /* 커서를 손가락 모양으로 변경 */
   }
 
+  .optionButton {
+    background-color: #f4f4f4; /* 버튼의 배경색 */
+    color: black; 
+    font-size: 14px;
+    border: none;              /* 버튼의 테두리 제거 */
+    width: auto;
+    height: 39px;
+    line-height: 39px; /* 버튼 높이와 동일하게 설정하여 수직 중앙 정렬 */
+  }
+
+  .optionButton:hover {
+    cursor: pointer; /* 커서를 손가락 모양으로 변경 */
+  }
+
+  .selectButton {
+    
+  }
+
+  .placeButton {
+
+  }
+
+  .characterButton {
+
+  }
+
+  .eventButton {
+
+  }
+
+
   .buttonClicked {
     text-decoration: solid;
+  }
+
+  .tile-row {
+    display: flex; /* Use flex to layout tiles in a row */
+    width: 100%; /* Full width to accommodate all tiles */
+    justify-content: center; /* Center tiles within the row */
+  }  
+
+  .tileMapContainer {
+    display: flex; /* Enable flex layout */
+    flex-wrap: wrap; /* Allow tiles to wrap to next line */
+    justify-content: center; /* Center tiles horizontally */
+    max-width: 100vw; /* Max width to prevent overflow */
+    overflow-x: hidden; /* Hide horizontal scrollbar */
+    padding: 10px; /* Optional: Adds some spacing around the tile map */
+  }
+
+  .tile {
+    background-color: #d9d9d9;
+    display: flex;
+    width: 40px; /* or any size */
+    height: 40px; /* or any size */
+    position: relative;
+    margin: 0.6675px;
+    vertical-align: top;
+    align-items: center; /* Center content vertically */
+    justify-content: center; /* Center content horizontally */
+  }
+
+  .tileMap{
+    background-color: rgb(128, 128, 128);
+    display: flex; /* Ensure flex layout */
+    flex-wrap: nowrap; /* Prevent wrapping of tiles */
+  }
+
+  .tileImage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto; /* this will center the image */
+    max-height: 100%;
+    max-width: 101%;
+  }
+  
+  .overlay {
+    /* If you want to stack images on top of each other within the tile */
+    z-index: 1; /* Increase z-index for each layer, if necessary */
   }
 
   

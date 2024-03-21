@@ -1,13 +1,35 @@
-body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
+.tabs {
+  position: fixed;
+  top: 0;
   background-color: #f4f4f4;
   background-image:
-  linear-gradient(to bottom, #707070 0.5px, transparent 0.5px),
-  linear-gradient(to bottom, #838383 0.75px, transparent 0.75px);
-  background-position:
-  0 42px,
-  0 81.5px;
+  linear-gradient(to bottom, #707070 0.5px, transparent 0.5px);
+  background-position: 0 42px;
   background-repeat: no-repeat;
+  height: 42.5px;
+  width: 100%; /* Ensure they fill the width */
+  z-index: 1000; /* Ensure they stay above the scrollable content */
+}
+
+.options {
+  position: fixed;
+  top: 42.5px;
+  background-color: #f4f4f4;
+  background-image:
+  linear-gradient(to bottom, #838383 1px, transparent 1px);
+  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.2);
+  background-position: 0 39.5px;
+  background-repeat: no-repeat;
+  height: 40px;
+  width: 100%; /* Ensure they fill the width */
+  z-index: 1000; /* Ensure they stay above the scrollable content */
+}
+
+/* Scrollable container for tilemap */
+.tileMap-container {
+  display: flex;
+  flex-direction: column; /* Stack children vertically */
+  max-height: 100vh; /* or any appropriates value */
+  height: calc(95vh);
+  overflow-y: hidden; /* Hide vertical scrollbar */
 }
