@@ -6,9 +6,15 @@ import { setWorldData } from './types/actions';
 import { createSelector } from 'reselect';
 import styles from './WorldProject.module.css';
 import './WorldProject.css';
+import BackspaceLogo from './images/Backspace.png'
+import SelectLogo from './images/Cursor.png';
 import PlaceTile from './images/Place.png';
+import PlaceLogo from './images/PlaceIcon.png';
 import CharacterTile from './images/Character.png';
+import CharacterLogo from './images/Character.png';
 import EventTile from './images/Event.png';
+import EventLogo from './images/Event.png';
+
 
 const createInitialTileMap = () => {
   // 여기서는 100x100 타일맵을 예로 들겠다.
@@ -41,20 +47,40 @@ const WorldProject = () => {
 
   // Replace local state with Redux state
   const worldData = useSelector(state => selectWorldDataByName(state, name));
-  const [activeTab, setActiveTab] = useState('World');
+  const [activeTab, setActiveTab] = useState('Map');
   const [selectedOption, setSelectedOption] = useState('Select');
   const [tileMap, setTileMap] = useState(createInitialTileMap());
   const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
   const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
 
-  const handleTabClick = (tabName) => {
-    setActiveTab(tabName);
+  const handleTabClick = (modeName) => {
+    setActiveTab(modeName);
     // 여기서 추가적으로 탭에 따른 데이터 로딩 등의 로직을 구현할 수 있다.
   };
 
   const handleOptionClick = (optionName) => {
     setSelectedOption(optionName);
-    // 해당 옵션에 따라 커서 스타일 등을 변경하는 로직을 여기에 구현한다.
+    // Remove previous cursor class from tileMapContainer if any
+    const tileContainer = document.querySelector('.tileMap-container');
+    tileContainer.classList.remove('selectCursor', 'placeCursor', 'characterCursor', 'eventCursor');
+
+    // Add the corresponding cursor class based on the selected option
+    switch(optionName) {
+      case 'Select':
+        tileContainer.classList.add('selectCursor');
+        break;
+      case 'Place':
+        tileContainer.classList.add('placeCursor');
+        break;
+      case 'Character':
+        tileContainer.classList.add('characterCursor');
+        break;
+      case 'Event':
+        tileContainer.classList.add('eventCursor');
+        break;
+      default:
+        break; // No default action
+    }
   };
 
   const handleTileDoubleClick = (rowIndex, tileIndex) => {
@@ -132,30 +158,63 @@ const WorldProject = () => {
 
   return (
     <div className='unselectable'>
-      <div className="tabs">
-        {['->','Map', 'State', 'System'].map((tab) => (
+      <div className="back">
           <button
-            key={tab}
-            className={`${styles.modeButton} ${activeTab === tab ? styles.buttonClicked : ''}`}
-            onClick={() => handleTabClick(tab)}
+            className={`${styles.backspaceButton}`}>
+            <img src={BackspaceLogo} alt="Backspace" className={styles.backspaceButtonIcon}/>
+          </button>
+      </div>
+      <div className="tabs">
+        {['Map', 'State', 'System'].map((mode) => (
+          
+          <button
+            key={mode}
+            className={`
+            ${styles.modeButton} 
+            ${activeTab === mode ? styles.modeButtonClicked : ''}`}
+            onClick={() => handleTabClick(mode)}
           >
-            {tab}
+            {mode}
           </button>
         ))}
       </div>
       <div className="options">
-        {[`${styles.selectButton} Select`, 
-        `${styles.placeButton} Place`, 
-        `${styles.characterButton} Character`, 
-        `${styles.eventButton} Event`].map((option) => (
           <button
-            key={option}
-            className={`${styles.optionButton} ${selectedOption === option ? styles.buttonClicked : ''}`}
-            onClick={() => handleOptionClick(option)}
+            key="Select"
+            className={`
+            ${styles.optionButton} 
+            ${selectedOption === 'Select' ? styles.optionButtonClicked : ''}`}
+            onClick={() => handleOptionClick('Select')}
           >
-            {option}
+            <img src={SelectLogo} alt="Select" className={styles.selectButtonIcon}/> Select
           </button>
-        ))}
+          <button
+            key="Place"
+            className={`
+            ${styles.optionButton} 
+            ${selectedOption === 'Place' ? styles.optionButtonClicked : ''}`}
+            onClick={() => handleOptionClick('Place')}
+          >
+            <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon}/> Place
+          </button>
+          <button
+            key="Character"
+            className={`
+            ${styles.optionButton} 
+            ${selectedOption === 'Character' ? styles.optionButtonClicked : ''}`}
+            onClick={() => handleOptionClick('Character')}
+          >
+            <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon}/> Character
+          </button>
+          <button
+            key="Event"
+            className={`
+            ${styles.optionButton} 
+            ${selectedOption === 'Event' ? styles.optionButtonClicked : ''}`}
+            onClick={() => handleOptionClick('Event')}
+          >
+            <img src={EventLogo} alt="Event" className={styles.eventButtonIcon}/> Event
+          </button>
       </div>
   <div className={`tileMap-container ${styles.tileMapContainer}`}>
       <div className={`tileMap ${styles.tileMap}`}>
@@ -169,9 +228,9 @@ const WorldProject = () => {
               onDoubleClick={() => handleTileDoubleClick(rowIndex, tileIndex)}
             >
               {/* Temporary visual indicator */}
-              {tile.place && <img src={PlaceTile} alt="Place" className={styles.tileImage} />}
-              {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.tileImage} ${styles.overlay}`} />}
-              {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.tileImage} ${styles.overlay}`} />}
+              {tile.place && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
+              {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
+              {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
             </div>
           ))}
       </div>
