@@ -14,6 +14,10 @@
     width: 22px;
     height: 21px;
   }
+
+  .backspaceButton:hover {
+    cursor: pointer; /* 커서를 손가락 모양으로 변경 */
+  }
   
   .modeButton {
     background-color: #f4f4f4; /* 버튼의 배경색 */

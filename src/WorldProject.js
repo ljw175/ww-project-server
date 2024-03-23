@@ -38,8 +38,19 @@ const createInitialTileMap = () => {
 };
 
 const WorldProject = () => {
+  const tileWidth = 40;
+  const tileHeight = 40;
+
   const { name } = useParams();
   const dispatch = useDispatch();
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+
+  const [selectionStart, setSelectionStart] = useState(null);
+  const [selectionEnd, setSelectionEnd] = useState(null);
+
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
     (worldData, name) => worldData.find(wd => wd.name === name) || {}
@@ -52,6 +63,51 @@ const WorldProject = () => {
   const [tileMap, setTileMap] = useState(createInitialTileMap());
   const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
   const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
+
+  const handleMouseDown = (e) => {
+    if (e.button === 0 && selectedOption === 'Place') {
+      const tileContainer = document.querySelector('.tileMap-container');
+      const rect = tileContainer.getBoundingClientRect();
+      const x = e.clientX - rect.left; // x position within the element.
+      const y = e.clientY - rect.top;  // y position within the element.
+  
+      setSelectionStart({ x, y });
+      setIsDragging(true);
+    }
+    if (e.button === 2 && selectedOption === 'Select') {
+      setIsDragging(true);
+      setStartX(e.clientX);
+      setStartY(e.clientY);
+    }
+    e.preventDefault(); // Prevent default right-click menu
+  };
+  
+  const handleMouseMove = (e) => {
+    if (isDragging && selectedOption === 'Place') {
+      const tileContainer = document.querySelector('.tileMap-container');
+      const rect = tileContainer.getBoundingClientRect();
+      const x = e.clientX - rect.left; // x position within the element.
+      const y = e.clientY - rect.top;  // y position within the element.
+  
+      setSelectionEnd({ x, y });
+    }
+    if (isDragging && selectedOption === 'Select') {
+      const tileContainer = document.querySelector('.tileMap-container');
+      tileContainer.scrollBy(startX - (e.clientX), startY - (e.clientY));
+      setStartX(e.clientX);
+      setStartY(e.clientY);
+    }
+  };
+  
+  const handleMouseUp = () => {
+    if (isDragging && selectedOption === 'Place') {
+      // Calculate the tiles within the selection bounds and update them
+      applyPlaceToSelectedTiles();
+    }
+    setIsDragging(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  };
 
   const handleTabClick = (modeName) => {
     setActiveTab(modeName);
@@ -83,6 +139,32 @@ const WorldProject = () => {
     }
   };
 
+  const applyPlaceToSelectedTiles = () => {
+    if (!selectionStart || !selectionEnd) return;
+  
+    const startCol = Math.floor(Math.min(selectionStart.x, selectionEnd.x) / tileWidth);
+    const endCol = Math.floor(Math.max(selectionStart.x, selectionEnd.x) / tileWidth);
+    const startRow = Math.floor(Math.min(selectionStart.y, selectionEnd.y) / tileHeight);
+    const endRow = Math.floor(Math.max(selectionStart.y, selectionEnd.y) / tileHeight);
+  
+    const updatedMap = tileMap.map((row, rowIndex) => {
+      if (rowIndex >= startRow && rowIndex <= endRow) {
+        return row.map((tile, colIndex) => {
+          if (colIndex >= startCol && colIndex <= endCol) {
+            return { ...tile, place: { name: 'New Place', details: 'Added via Drag' } }; // Update as necessary
+          }
+          return tile;
+        });
+      }
+      return row;
+    });
+  
+    setTileMap(updatedMap);
+  };
+  
+
+  
+
   const handleTileDoubleClick = (rowIndex, tileIndex) => {
     const tile = tileMap[rowIndex][tileIndex];
     setSelectedTileDetails(tile); // Now includes all characters and events
@@ -112,7 +194,7 @@ const WorldProject = () => {
       switch (selectedOption) {
         case 'Place':
           // Place 옵션이 선택되었을 때만 빈 타일에 배치 가능
-          if (!tile.place) {
+          if (!tile.place && !isDragging) {
             tile.place = { name: 'New Place', details: 'Place Details' };
           }
           break;
@@ -216,7 +298,13 @@ const WorldProject = () => {
             <img src={EventLogo} alt="Event" className={styles.eventButtonIcon}/> Event
           </button>
       </div>
-  <div className={`tileMap-container ${styles.tileMapContainer}`}>
+  <div 
+      className={`tileMap-container ${styles.tileMapContainer}`}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onContextMenu={(e) => e.preventDefault()} // Prevent the context menu from showing on right-click
+  >
       <div className={`tileMap ${styles.tileMap}`}>
         {tileMap.map((row, rowIndex) => (
           <div key={rowIndex} className={`tile-row ${styles.tile-row}`}>
