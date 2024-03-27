@@ -38,8 +38,6 @@ const createInitialTileMap = () => {
 };
 
 const WorldProject = () => {
-  const tileWidth = 40;
-  const tileHeight = 40;
 
   const { name } = useParams();
   const dispatch = useDispatch();
@@ -47,9 +45,6 @@ const WorldProject = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
-
-  const [selectionStart, setSelectionStart] = useState(null);
-  const [selectionEnd, setSelectionEnd] = useState(null);
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -65,15 +60,6 @@ const WorldProject = () => {
   const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
 
   const handleMouseDown = (e) => {
-    if (e.button === 0 && selectedOption === 'Place') {
-      const tileContainer = document.querySelector('.tileMap-container');
-      const rect = tileContainer.getBoundingClientRect();
-      const x = e.clientX - rect.left; // x position within the element.
-      const y = e.clientY - rect.top;  // y position within the element.
-  
-      setSelectionStart({ x, y });
-      setIsDragging(true);
-    }
     if (e.button === 2 && selectedOption === 'Select') {
       setIsDragging(true);
       setStartX(e.clientX);
@@ -83,14 +69,6 @@ const WorldProject = () => {
   };
   
   const handleMouseMove = (e) => {
-    if (isDragging && selectedOption === 'Place') {
-      const tileContainer = document.querySelector('.tileMap-container');
-      const rect = tileContainer.getBoundingClientRect();
-      const x = e.clientX - rect.left; // x position within the element.
-      const y = e.clientY - rect.top;  // y position within the element.
-  
-      setSelectionEnd({ x, y });
-    }
     if (isDragging && selectedOption === 'Select') {
       const tileContainer = document.querySelector('.tileMap-container');
       tileContainer.scrollBy(startX - (e.clientX), startY - (e.clientY));
@@ -99,16 +77,6 @@ const WorldProject = () => {
     }
   };
   
-  const handleMouseUp = () => {
-    if (isDragging && selectedOption === 'Place') {
-      // Calculate the tiles within the selection bounds and update them
-      applyPlaceToSelectedTiles();
-    }
-    setIsDragging(false);
-    setSelectionStart(null);
-    setSelectionEnd(null);
-  };
-
   const handleTabClick = (modeName) => {
     setActiveTab(modeName);
     // 여기서 추가적으로 탭에 따른 데이터 로딩 등의 로직을 구현할 수 있다.
@@ -138,32 +106,6 @@ const WorldProject = () => {
         break; // No default action
     }
   };
-
-  const applyPlaceToSelectedTiles = () => {
-    if (!selectionStart || !selectionEnd) return;
-  
-    const startCol = Math.floor(Math.min(selectionStart.x, selectionEnd.x) / tileWidth);
-    const endCol = Math.floor(Math.max(selectionStart.x, selectionEnd.x) / tileWidth);
-    const startRow = Math.floor(Math.min(selectionStart.y, selectionEnd.y) / tileHeight);
-    const endRow = Math.floor(Math.max(selectionStart.y, selectionEnd.y) / tileHeight);
-  
-    const updatedMap = tileMap.map((row, rowIndex) => {
-      if (rowIndex >= startRow && rowIndex <= endRow) {
-        return row.map((tile, colIndex) => {
-          if (colIndex >= startCol && colIndex <= endCol) {
-            return { ...tile, place: { name: 'New Place', details: 'Added via Drag' } }; // Update as necessary
-          }
-          return tile;
-        });
-      }
-      return row;
-    });
-  
-    setTileMap(updatedMap);
-  };
-  
-
-  
 
   const handleTileDoubleClick = (rowIndex, tileIndex) => {
     const tile = tileMap[rowIndex][tileIndex];
@@ -302,7 +244,6 @@ const WorldProject = () => {
       className={`tileMap-container ${styles.tileMapContainer}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()} // Prevent the context menu from showing on right-click
   >
       <div className={`tileMap ${styles.tileMap}`}>
