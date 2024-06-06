@@ -119,6 +119,20 @@
     align-items: center; /* Center content vertically */
     justify-content: center; /* Center content horizontally */
   }
+  
+  .selectedTile::after {
+    content: '';
+    background-image: url('./images/TileSelected.png'); /* path to your image */
+    background-size: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    pointer-events: none; /* ensures that the overlay does not interfere with tile interactions */
+  }
+  
 
   .tileMap{
     background-color: rgb(128, 128, 128);

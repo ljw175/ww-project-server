@@ -1,11 +1,13 @@
-import { 
-    SET_BUTTON_CLICK_STATUS, 
-    ADD_NEW_WORLD, 
-    SELECT_WORLD, 
-    EDIT_SELECTED_WORLD, 
-    DELETE_SELECTED_WORLD,
-    SET_WORLDS } 
-    from './actions';
+import {
+  SET_BUTTON_CLICK_STATUS,
+  ADD_NEW_WORLD,
+  SELECT_WORLD,
+  EDIT_SELECTED_WORLD,
+  DELETE_SELECTED_WORLD,
+  SET_WORLDS,
+  SET_WORLD_DATA,
+  UPDATE_TIME,
+} from './actions';
 
 // 초기 상태 정의
 const initialState = {
@@ -18,6 +20,7 @@ const initialState = {
   worlds: [],
   selectedWorldName: null,
   isEditMode: false,
+  time: 0,
 };
 
 // 리듀서 함수 정의
@@ -59,7 +62,16 @@ function worldReducer(state = initialState, action) {
         worlds: state.worlds.filter(world => world.name !== action.payload),
         selectedWorldName: null,
       };
-
+    case SET_WORLD_DATA:
+      return {
+        ...state,
+        worldData: action.payload,
+      };
+    case UPDATE_TIME:
+      return {
+        ...state,
+        time: action.payload,
+      };
     default:
       return state;
   }
