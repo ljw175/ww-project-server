@@ -44,7 +44,7 @@
     z-index: 1000; /* Ensure they stay above the scrollable content */
   }
   
-  /* Scrollable container for tilemap */
+  /* Scrollable container for tileMap */
   .tileMap-container {
     cursor: url('./images/SelectCursor.png'), auto;
     display: flex;

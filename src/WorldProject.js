@@ -14,7 +14,7 @@ import CharacterTile from './images/Character.png';
 import CharacterLogo from './images/Character.png';
 import EventTile from './images/Event.png';
 import EventLogo from './images/Event.png';
-import TileSelected from './images/TileSelected.png';  // Add this import
+import TileSelected from './images/TileSelected.png';
 
 const createInitialTileMap = () => {
   const mapSize = 100;
@@ -43,7 +43,8 @@ const WorldProject = () => {
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
   const isDraggingRef = useRef(isDragging);
-  const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null });  // Add this state
+  const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null, top: 0, left: 0 });
+  const [detailPopupPosition, setDetailPopupPosition] = useState({ top: 0, left: 0 });
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -96,6 +97,7 @@ const WorldProject = () => {
 
     if (optionName !== 'Select') {
       setSelectedTile({ rowIndex: null, tileIndex: null }); // Clear selected tile when changing mode
+      setDetailPopupVisible(false); // Hide detail popup when changing mode
     }
 
     switch (optionName) {
@@ -116,10 +118,16 @@ const WorldProject = () => {
     }
   };
 
-  const handleTileDoubleClick = (rowIndex, tileIndex) => {
-    const tile = tileMap[rowIndex][tileIndex];
-    setSelectedTileDetails(tile);
-    setDetailPopupVisible(true);
+  const handleTileRightClick = (e, rowIndex, tileIndex) => {
+    e.preventDefault();
+    if (selectedOption === 'Select' && selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex) {
+      const tileElement = document.querySelector(`[data-row="${rowIndex}"][data-tile="${tileIndex}"]`);
+      const tileRect = tileElement.getBoundingClientRect();
+      setDetailPopupPosition({ top: tileRect.bottom + window.scrollY, left: tileRect.right + window.scrollX });
+      const tile = tileMap[rowIndex][tileIndex];
+      setSelectedTileDetails(tile);
+      setDetailPopupVisible(true);
+    }
   };
 
   const addCharacterOrEvent = (type, rowIndex, tileIndex, newItem) => {
@@ -135,7 +143,12 @@ const WorldProject = () => {
 
   const handleTileClick = (rowIndex, tileIndex) => {
     if (selectedOption === 'Select') {
-      setSelectedTile({ rowIndex, tileIndex });
+      const tileElement = document.querySelector(`[data-row="${rowIndex}"][data-tile="${tileIndex}"]`);
+      const tileRect = tileElement.getBoundingClientRect();
+      setSelectedTile({ rowIndex, tileIndex, top: tileRect.top + window.scrollY, left: tileRect.left + window.scrollX });
+      setDetailPopupVisible(false); // Ensure detail popup is not shown on left click
+    } else {
+      setDetailPopupVisible(false); // Hide detail popup when clicking another tile
     }
 
     setTileMap((currentMap) => {
@@ -162,10 +175,6 @@ const WorldProject = () => {
           }
           break;
         default:
-          if (tile.place || tile.character || tile.event) {
-            setDetailPopupVisible(true);
-            setSelectedTileDetails({ ...tile });
-          }
           break;
       }
 
@@ -276,40 +285,42 @@ const WorldProject = () => {
               {row.map((tile, tileIndex) => (
                 <div
                   key={tileIndex}
+                  data-row={rowIndex}
+                  data-tile={tileIndex}
                   className={`${styles.tile} ${selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex ? styles.selectedTile : ''}`}
                   onClick={() => handleTileClick(rowIndex, tileIndex)}
-                  onDoubleClick={() => handleTileDoubleClick(rowIndex, tileIndex)}
+                  onContextMenu={(e) => handleTileRightClick(e, rowIndex, tileIndex)}
                 >
                   {tile.place && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
                   {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
                   {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
+                  {isDetailPopupVisible && selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex && (
+                    <div className={styles.detailPopup} style={{ top: detailPopupPosition.top, left: detailPopupPosition.left }}>
+                      <h2>Tile Details</h2>
+                      <p>Name (Place): {selectedTileDetails.place?.name || 'N/A'}</p>
+                      <p>Description (Place): {selectedTileDetails.place?.details || 'N/A'}</p>
+                      <h3>Characters:</h3>
+                      {selectedTileDetails.characters?.map((char, index) => (
+                        <div key={index}>
+                          <p>Name: {char.name}</p>
+                          <p>Description: {char.details}</p>
+                        </div>
+                      ))}
+                      <h3>Events:</h3>
+                      {selectedTileDetails.events?.map((event, index) => (
+                        <div key={index}>
+                          <p>Name: {event.name}</p>
+                          <p>Description: {event.details}</p>
+                        </div>
+                      ))}
+                      <button onClick={() => setDetailPopupVisible(false)}>Close</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           ))}
         </div>
-        {isDetailPopupVisible && (
-          <div className="detail-popup">
-            <h2>Tile Details</h2>
-            <p>Name (Place): {selectedTileDetails.place?.name || 'N/A'}</p>
-            <p>Description (Place): {selectedTileDetails.place?.details || 'N/A'}</p>
-            <h3>Characters:</h3>
-            {selectedTileDetails.characters?.map((char, index) => (
-              <div key={index}>
-                <p>Name: {char.name}</p>
-                <p>Description: {char.details}</p>
-              </div>
-            ))}
-            <h3>Events:</h3>
-            {selectedTileDetails.events?.map((event, index) => (
-              <div key={index}>
-                <p>Name: {event.name}</p>
-                <p>Description: {event.details}</p>
-              </div>
-            ))}
-            <button onClick={() => setDetailPopupVisible(false)}>Close</button>
-          </div>
-        )}
       </div>
     </div>
   );
