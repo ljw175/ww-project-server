@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
-import { setWorldData, updateTime } from './types/actions';
+import { setWorldData } from './types/actions';
 import { createSelector } from 'reselect';
 import styles from './WorldProject.module.css';
 import './WorldProject.css';
@@ -43,8 +43,12 @@ const WorldProject = () => {
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
   const isDraggingRef = useRef(isDragging);
-  const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null, top: 0, left: 0 });
+  const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null });
+  const [copiedTile, setCopiedTile] = useState(null);
   const [detailPopupPosition, setDetailPopupPosition] = useState({ top: 0, left: 0 });
+  const [history, setHistory] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const [tileMap, setTileMap] = useState(createInitialTileMap());
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -54,10 +58,8 @@ const WorldProject = () => {
   const worldData = useSelector(state => selectWorldDataByName(state, name));
   const [activeTab, setActiveTab] = useState('Map');
   const [selectedOption, setSelectedOption] = useState('Select');
-  const [tileMap, setTileMap] = useState(createInitialTileMap());
   const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
   const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
-  const time = useSelector(state => state.world.time);
 
   const handleMouseDown = (e) => {
     if (e.button === 2 && selectedOption === 'Select') {
@@ -121,9 +123,7 @@ const WorldProject = () => {
   const handleTileRightClick = (e, rowIndex, tileIndex) => {
     e.preventDefault();
     if (selectedOption === 'Select' && selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex) {
-      const tileElement = document.querySelector(`[data-row="${rowIndex}"][data-tile="${tileIndex}"]`);
-      const tileRect = tileElement.getBoundingClientRect();
-      setDetailPopupPosition({ top: tileRect.bottom + window.scrollY, left: tileRect.right + window.scrollX });
+      setDetailPopupPosition({ top: e.clientY, left: e.clientX });
       const tile = tileMap[rowIndex][tileIndex];
       setSelectedTileDetails(tile);
       setDetailPopupVisible(true);
@@ -143,9 +143,7 @@ const WorldProject = () => {
 
   const handleTileClick = (rowIndex, tileIndex) => {
     if (selectedOption === 'Select') {
-      const tileElement = document.querySelector(`[data-row="${rowIndex}"][data-tile="${tileIndex}"]`);
-      const tileRect = tileElement.getBoundingClientRect();
-      setSelectedTile({ rowIndex, tileIndex, top: tileRect.top + window.scrollY, left: tileRect.left + window.scrollX });
+      setSelectedTile({ rowIndex, tileIndex });
       setDetailPopupVisible(false); // Ensure detail popup is not shown on left click
     } else {
       setDetailPopupVisible(false); // Hide detail popup when clicking another tile
@@ -162,16 +160,19 @@ const WorldProject = () => {
         case 'Place':
           if (!tile.place && !isDraggingRef.current) {
             tile.place = { name: 'New Place', details: 'Place Details' };
+            saveTileMap(newMap); // Save tile map to the server
           }
           break;
         case 'Character':
           if (tileMap[rowIndex][tileIndex].place) {
             addCharacterOrEvent('characters', rowIndex, tileIndex, newItem);
+            saveTileMap(newMap); // Save tile map to the server
           }
           break;
         case 'Event':
           if (tileMap[rowIndex][tileIndex].place) {
             addCharacterOrEvent('events', rowIndex, tileIndex, newItem);
+            saveTileMap(newMap); // Save tile map to the server
           }
           break;
         default:
@@ -182,10 +183,119 @@ const WorldProject = () => {
     });
   };
 
-  const handleMovePlayer = (newPosition) => {
-    dispatch(updateTime(time + 1)); // Increment time on player move
-    // Additional logic to check for events based on the new position and time
+  const saveTileMap = async (newMap) => {
+    try {
+      await axios.put(`/api/worlds/${name}`, { tileMap: newMap });
+    } catch (error) {
+      console.error("Error saving tile map", error);
+    }
   };
+
+  const handleDeleteTile = () => {
+    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
+      setTileMap(currentMap => {
+        const newMap = JSON.parse(JSON.stringify(currentMap));
+        const tile = newMap[selectedTile.rowIndex][selectedTile.tileIndex];
+        if (tile.place || tile.characters.length > 0 || tile.events.length > 0) {
+          setHistory([...history, currentMap]); // Save current state to history before deleting
+          setRedoStack([]); // Clear redo stack
+          tile.place = null;
+          tile.characters = [];
+          tile.events = [];
+          saveTileMap(newMap); // Save tile map to the server
+        }
+        return newMap;
+      });
+    }
+  };
+
+  const handleCopyTile = () => {
+    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
+      const tile = tileMap[selectedTile.rowIndex][selectedTile.tileIndex];
+      setCopiedTile({ ...tile });
+    }
+  };
+
+  const handleCutTile = () => {
+    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
+      const tile = tileMap[selectedTile.rowIndex][selectedTile.tileIndex];
+      setCopiedTile({ ...tile });
+      handleDeleteTile(); // Delete the tile after copying it
+    }
+  };
+
+  const handlePasteTile = () => {
+    if (copiedTile && selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
+      setTileMap(currentMap => {
+        const newMap = JSON.parse(JSON.stringify(currentMap));
+        const tile = newMap[selectedTile.rowIndex][selectedTile.tileIndex];
+        if (!tile.place && tile.characters.length === 0 && tile.events.length === 0) { // Only paste if the target tile is empty
+          setHistory([...history, currentMap]); // Save current state to history before pasting
+          setRedoStack([]); // Clear redo stack
+          newMap[selectedTile.rowIndex][selectedTile.tileIndex] = { ...copiedTile };
+          saveTileMap(newMap); // Save tile map to the server
+        }
+        return newMap;
+      });
+    }
+  };
+
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const lastState = history.pop();
+      setRedoStack([...redoStack, tileMap]); // Save current state to redo stack
+      setTileMap(lastState);
+      setHistory(history);
+      saveTileMap(lastState); // Save tile map to the server
+    }
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length > 0) {
+      const lastRedoState = redoStack.pop();
+      setHistory([...history, tileMap]); // Save current state to history
+      setTileMap(lastRedoState);
+      setRedoStack(redoStack);
+      saveTileMap(lastRedoState); // Save tile map to the server
+    }
+  };
+
+  const handleKeyDown = useCallback((e) => {
+    if (selectedOption === 'Select') {
+      switch (e.key) {
+        case 'Delete':
+          handleDeleteTile();
+          break;
+        case 'c':
+          if (e.ctrlKey) {
+            handleCopyTile();
+          }
+          break;
+        case 'x':
+          if (e.ctrlKey) {
+            handleCutTile();
+          }
+          break;
+        case 'v':
+          if (e.ctrlKey) {
+            handlePasteTile();
+          }
+          break;
+        case 'z':
+          if (e.ctrlKey) {
+            handleUndo();
+          }
+          break;
+        case 'y':
+          if (e.ctrlKey) {
+            handleRedo();
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }, [selectedOption, handleDeleteTile, handleCopyTile, handleCutTile, handlePasteTile, handleUndo, handleRedo]);
 
   const resetDragging = () => {
     setIsDragging(false);
@@ -195,7 +305,6 @@ const WorldProject = () => {
   };
 
   useEffect(() => {
-    setTileMap(createInitialTileMap());
     if (!worldData) {
       const fetchWorldData = async () => {
         try {
@@ -209,11 +318,14 @@ const WorldProject = () => {
     }
 
     document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keydown', handleKeyDown); // Add keydown event listener to the window object
+
     return () => {
       document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keydown', handleKeyDown); // Remove keydown event listener from the window object
       resetDragging();
     };
-  }, [name, dispatch]);
+  }, [name, dispatch, handleKeyDown]);
 
   useEffect(() => {
     if (isDragging) {
@@ -225,6 +337,12 @@ const WorldProject = () => {
       document.removeEventListener('mousemove', handleMouseMove);
     };
   }, [isDragging]);
+
+  useEffect(() => {
+    if (worldData.tileMap) {
+      setTileMap(worldData.tileMap);
+    }
+  }, [worldData]);
 
   return (
     <div className='unselectable'>
@@ -294,34 +412,34 @@ const WorldProject = () => {
                   {tile.place && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
                   {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
                   {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
-                  {isDetailPopupVisible && selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex && (
-                    <div className={styles.detailPopup} style={{ top: detailPopupPosition.top, left: detailPopupPosition.left }}>
-                      <h2>Tile Details</h2>
-                      <p>Name (Place): {selectedTileDetails.place?.name || 'N/A'}</p>
-                      <p>Description (Place): {selectedTileDetails.place?.details || 'N/A'}</p>
-                      <h3>Characters:</h3>
-                      {selectedTileDetails.characters?.map((char, index) => (
-                        <div key={index}>
-                          <p>Name: {char.name}</p>
-                          <p>Description: {char.details}</p>
-                        </div>
-                      ))}
-                      <h3>Events:</h3>
-                      {selectedTileDetails.events?.map((event, index) => (
-                        <div key={index}>
-                          <p>Name: {event.name}</p>
-                          <p>Description: {event.details}</p>
-                        </div>
-                      ))}
-                      <button onClick={() => setDetailPopupVisible(false)}>Close</button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           ))}
         </div>
       </div>
+      {isDetailPopupVisible && (
+        <div className={styles.detailPopup} style={{ top: detailPopupPosition.top, left: detailPopupPosition.left }}>
+          <h2>Tile Details</h2>
+          <p>Name (Place): {selectedTileDetails.place?.name || 'N/A'}</p>
+          <p>Description (Place): {selectedTileDetails.place?.details || 'N/A'}</p>
+          <h3>Characters:</h3>
+          {selectedTileDetails.characters?.map((char, index) => (
+            <div key={index}>
+              <p>Name: {char.name}</p>
+              <p>Description: {char.details}</p>
+            </div>
+          ))}
+          <h3>Events:</h3>
+          {selectedTileDetails.events?.map((event, index) => (
+            <div key={index}>
+              <p>Name: {event.name}</p>
+              <p>Description: {event.details}</p>
+            </div>
+          ))}
+          <button onClick={() => setDetailPopupVisible(false)}>Close</button>
+        </div>
+      )}
     </div>
   );
 };

@@ -120,6 +120,10 @@
     justify-content: center; /* Center content horizontally */
   }
   
+  .selectedTile:hover {
+    cursor: pointer; /* Changes cursor to pointer (finger shape) when hovering over the selected tile */
+  }
+  
   .selectedTile::after {
     content: '';
     background-image: url('./images/TileSelected.png'); /* path to your image */
