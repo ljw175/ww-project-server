@@ -24,7 +24,7 @@ const createInitialTileMap = () => {
     let tileRow = [];
     for (let col = 0; col < mapSize; col++) {
       tileRow.push({
-        place: null,
+        place: null, // Place type unset initially
         characters: [],
         events: [],
       });
@@ -39,16 +39,15 @@ const WorldProject = () => {
   const { name } = useParams();
   const dispatch = useDispatch();
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startY, setStartY] = useState(0);
-  const isDraggingRef = useRef(isDragging);
   const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null });
   const [copiedTile, setCopiedTile] = useState(null);
   const [detailPopupPosition, setDetailPopupPosition] = useState({ top: 0, left: 0 });
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [tileMap, setTileMap] = useState(createInitialTileMap());
+  const [placeTypes, setPlaceTypes] = useState([{ name: 'Void', color: '#d9d9d9', script: '', activateWithEvent: false }]);
+  const [selectedPlaceType, setSelectedPlaceType] = useState(null);
+  const [showPlaceSelectionWindow, setShowPlaceSelectionWindow] = useState(false);
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -60,36 +59,22 @@ const WorldProject = () => {
   const [selectedOption, setSelectedOption] = useState('Select');
   const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
   const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
+  const [stateSubTab, setStateSubTab] = useState('Place');
 
-  const handleMouseDown = (e) => {
-    if (e.button === 2 && selectedOption === 'Select') {
-      setIsDragging(true);
-      isDraggingRef.current = true;
-      setStartX(e.clientX);
-      setStartY(e.clientY);
+  const handleMouseDown = (e, rowIndex = null, tileIndex = null) => {
+    if (e.button === 0 && selectedOption === 'Select' && rowIndex !== null && tileIndex !== null) {
+      setSelectedTile({ rowIndex, tileIndex });
     }
     e.preventDefault();
   };
 
-  const handleMouseMove = (e) => {
-    if (isDraggingRef.current && selectedOption === 'Select') {
-      const tileContainer = document.querySelector('.tileMap-container');
-      tileContainer.scrollBy(startX - e.clientX, startY - e.clientY);
-      setStartX(e.clientX);
-      setStartY(e.clientY);
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isDraggingRef.current) {
-      setIsDragging(false);
-      isDraggingRef.current = false;
-    }
-  };
-
   const handleTabClick = (modeName) => {
     setActiveTab(modeName);
-    resetDragging();
+    setSelectedOption('Select'); // Reset option to Select
+    setShowPlaceSelectionWindow(false); // Hide the place selection window when switching tabs
+    if (modeName === 'State') {
+      setStateSubTab('Place'); // Default to 'Place' sub-tab when entering 'State' tab
+    }
   };
 
   const handleOptionClick = (optionName) => {
@@ -97,23 +82,23 @@ const WorldProject = () => {
     const tileContainer = document.querySelector('.tileMap-container');
     tileContainer.classList.remove('selectCursor', 'placeCursor', 'characterCursor', 'eventCursor');
 
-    if (optionName !== 'Select') {
-      setSelectedTile({ rowIndex: null, tileIndex: null }); // Clear selected tile when changing mode
-      setDetailPopupVisible(false); // Hide detail popup when changing mode
-    }
-
     switch (optionName) {
       case 'Select':
         tileContainer.classList.add('selectCursor');
+        setShowPlaceSelectionWindow(false);
         break;
       case 'Place':
         tileContainer.classList.add('placeCursor');
+        setShowPlaceSelectionWindow(true);
+        setSelectedPlaceType(placeTypes.length > 1 ? placeTypes[1] : placeTypes[0]); // Default to first user-created type or 'Void'
         break;
       case 'Character':
         tileContainer.classList.add('characterCursor');
+        setShowPlaceSelectionWindow(false);
         break;
       case 'Event':
         tileContainer.classList.add('eventCursor');
+        setShowPlaceSelectionWindow(false);
         break;
       default:
         break;
@@ -158,8 +143,8 @@ const WorldProject = () => {
 
       switch (selectedOption) {
         case 'Place':
-          if (!tile.place && !isDraggingRef.current) {
-            tile.place = { name: 'New Place', details: 'Place Details' };
+          if (!tile.place) {
+            tile.place = selectedPlaceType || { name: 'Void', color: '#d9d9d9', script: '', activateWithEvent: false }; // Set the selected place type
             saveTileMap(newMap); // Save tile map to the server
           }
           break;
@@ -199,7 +184,7 @@ const WorldProject = () => {
         if (tile.place || tile.characters.length > 0 || tile.events.length > 0) {
           setHistory([...history, currentMap]); // Save current state to history before deleting
           setRedoStack([]); // Clear redo stack
-          tile.place = null;
+          tile.place = null; // Unset place type
           tile.characters = [];
           tile.events = [];
           saveTileMap(newMap); // Save tile map to the server
@@ -297,11 +282,28 @@ const WorldProject = () => {
     }
   }, [selectedOption, handleDeleteTile, handleCopyTile, handleCutTile, handlePasteTile, handleUndo, handleRedo]);
 
-  const resetDragging = () => {
-    setIsDragging(false);
-    isDraggingRef.current = false;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+  const handleAddPlace = () => {
+    const newPlaceType = {
+      name: `New Type ${placeTypes.length}`,
+      color: '#ffffff',
+      script: '',
+      activateWithEvent: false,
+    };
+    setPlaceTypes([...placeTypes, newPlaceType]);
+  };
+
+  const handlePlaceTypeClick = (placeType) => {
+    setSelectedPlaceType(placeType);
+  };
+
+  const handlePlaceTypeChange = (e, index) => {
+    const { name, value, type, checked } = e.target;
+    const updatedPlaceTypes = [...placeTypes];
+    updatedPlaceTypes[index] = {
+      ...updatedPlaceTypes[index],
+      [name]: type === 'checkbox' ? checked : value,
+    };
+    setPlaceTypes(updatedPlaceTypes);
   };
 
   useEffect(() => {
@@ -317,32 +319,18 @@ const WorldProject = () => {
       fetchWorldData();
     }
 
-    document.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('keydown', handleKeyDown); // Add keydown event listener to the window object
 
     return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('keydown', handleKeyDown); // Remove keydown event listener from the window object
-      resetDragging();
     };
   }, [name, dispatch, handleKeyDown]);
 
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-    } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [isDragging]);
-
-  useEffect(() => {
-    if (worldData.tileMap) {
+    if (worldData?.tileMap) {
       setTileMap(worldData.tileMap);
     }
-  }, [worldData]);
+  }, [worldData?.tileMap]);
 
   return (
     <div className='unselectable'>
@@ -362,62 +350,171 @@ const WorldProject = () => {
           </button>
         ))}
       </div>
-      <div className="options">
-        <button
-          key="Select"
-          className={`${styles.optionButton} ${selectedOption === 'Select' ? styles.optionButtonClicked : ''}`}
-          onClick={() => handleOptionClick('Select')}
-        >
-          <img src={SelectLogo} alt="Select" className={styles.selectButtonIcon} /> Select
-        </button>
-        <button
-          key="Place"
-          className={`${styles.optionButton} ${selectedOption === 'Place' ? styles.optionButtonClicked : ''}`}
-          onClick={() => handleOptionClick('Place')}
-        >
-          <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon} /> Place
-        </button>
-        <button
-          key="Character"
-          className={`${styles.optionButton} ${selectedOption === 'Character' ? styles.optionButtonClicked : ''}`}
-          onClick={() => handleOptionClick('Character')}
-        >
-          <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon} /> Character
-        </button>
-        <button
-          key="Event"
-          className={`${styles.optionButton} ${selectedOption === 'Event' ? styles.optionButtonClicked : ''}`}
-          onClick={() => handleOptionClick('Event')}
-        >
-          <img src={EventLogo} alt="Event" className={styles.eventButtonIcon} /> Event
-        </button>
-      </div>
-      <div
-        className={`tileMap-container ${styles.tileMapContainer}`}
-        onMouseDown={handleMouseDown}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        <div className={`tileMap ${styles.tileMap}`}>
-          {tileMap.map((row, rowIndex) => (
-            <div key={rowIndex} className={`tile-row ${styles.tileRow}`}>
-              {row.map((tile, tileIndex) => (
+      {activeTab === 'Map' && (
+        <>
+          <div className="options">
+            <button
+              key="Select"
+              className={`${styles.optionButton} ${selectedOption === 'Select' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Select')}
+            >
+              <img src={SelectLogo} alt="Select" className={styles.selectButtonIcon} /> Select
+            </button>
+            <button
+              key="Place"
+              className={`${styles.optionButton} ${selectedOption === 'Place' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Place')}
+            >
+              <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon} /> Place
+            </button>
+            <button
+              key="Character"
+              className={`${styles.optionButton} ${selectedOption === 'Character' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Character')}
+            >
+              <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon} /> Character
+            </button>
+            <button
+              key="Event"
+              className={`${styles.optionButton} ${selectedOption === 'Event' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Event')}
+            >
+              <img src={EventLogo} alt="Event" className={styles.eventButtonIcon} /> Event
+            </button>
+          </div>
+          {selectedOption === 'Place' && showPlaceSelectionWindow && (
+            <div className={`${styles.placeSelectionWindow}`}>
+              {placeTypes.map((placeType, index) => (
                 <div
-                  key={tileIndex}
-                  data-row={rowIndex}
-                  data-tile={tileIndex}
-                  className={`${styles.tile} ${selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex ? styles.selectedTile : ''}`}
-                  onClick={() => handleTileClick(rowIndex, tileIndex)}
-                  onContextMenu={(e) => handleTileRightClick(e, rowIndex, tileIndex)}
+                  key={index}
+                  className={styles.placeTypeIcon}
+                  style={{ backgroundColor: placeType.color }}
+                  onClick={() => handlePlaceTypeClick(placeType)}
+                  title={placeType.name}
                 >
-                  {tile.place && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
-                  {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
-                  {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
+                  {placeType.name}
                 </div>
               ))}
             </div>
-          ))}
+          )}
+          <div
+            className={`tileMap-container ${styles.tileMapContainer}`}
+            onMouseDown={(e) => handleMouseDown(e)}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className={`tileMap ${styles.tileMap}`}>
+              {tileMap.map((row, rowIndex) => (
+                <div key={rowIndex} className={`tile-row ${styles.tileRow}`}>
+                  {row.map((tile, tileIndex) => (
+                    <div
+                      key={tileIndex}
+                      data-row={rowIndex}
+                      data-tile={tileIndex}
+                      className={`${styles.tile} ${selectedTile.rowIndex === rowIndex && selectedTile.tileIndex === tileIndex ? styles.selectedTile : ''}`}
+                      onMouseDown={(e) => handleMouseDown(e, rowIndex, tileIndex)}
+                      onClick={() => handleTileClick(rowIndex, tileIndex)}
+                      onContextMenu={(e) => handleTileRightClick(e, rowIndex, tileIndex)}
+                      style={{ backgroundColor: tile.place ? tile.place.color : '#d9d9d9' }}
+                    >
+                      {tile.place && tile.place.name !== 'Void' && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
+                      {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
+                      {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      {activeTab === 'State' && (
+        <div className={`state-container ${styles.stateContainer}`}>
+          <h2>State Management</h2>
+          <div className="options">
+            <button
+              key="Place"
+              className={`${styles.optionButton} ${stateSubTab === 'Place' ? styles.optionButtonClicked : ''}`}
+              onClick={() => setStateSubTab('Place')}
+            >
+              <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon} /> Place
+            </button>
+            <button
+              key="Character"
+              className={`${styles.optionButton} ${stateSubTab === 'Character' ? styles.optionButtonClicked : ''}`}
+              onClick={() => setStateSubTab('Character')}
+            >
+              <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon} /> Character
+            </button>
+            <button
+              key="Event"
+              className={`${styles.optionButton} ${stateSubTab === 'Event' ? styles.optionButtonClicked : ''}`}
+              onClick={() => setStateSubTab('Event')}
+            >
+              <img src={EventLogo} alt="Event" className={styles.eventButtonIcon} /> Event
+            </button>
+          </div>
+          {stateSubTab === 'Place' && (
+            <div>
+              <h3>Places</h3>
+              <button onClick={handleAddPlace}>Add Place</button>
+              {placeTypes.map((placeType, index) => (
+                <div key={index} className="place-type">
+                  <h4>{placeType.name}</h4>
+                  <label>
+                    Name:
+                    <input
+                      type="text"
+                      name="name"
+                      value={placeType.name}
+                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                    />
+                  </label>
+                  <label>
+                    Color:
+                    <input
+                      type="color"
+                      name="color"
+                      value={placeType.color}
+                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                    />
+                  </label>
+                  <label>
+                    Script:
+                    <textarea
+                      name="script"
+                      value={placeType.script}
+                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                    />
+                  </label>
+                  <label>
+                    Activate with Event:
+                    <input
+                      type="checkbox"
+                      name="activateWithEvent"
+                      checked={placeType.activateWithEvent}
+                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+          {stateSubTab === 'Character' && (
+            <div>
+              <h3>Characters</h3>
+              <button>Add Character</button>
+              {/* List and manage characters here */}
+            </div>
+          )}
+          {stateSubTab === 'Event' && (
+            <div>
+              <h3>Events</h3>
+              <button>Add Event</button>
+              {/* List and manage events here */}
+            </div>
+          )}
         </div>
-      </div>
+      )}
       {isDetailPopupVisible && (
         <div className={styles.detailPopup} style={{ top: detailPopupPosition.top, left: detailPopupPosition.left }}>
           <h2>Tile Details</h2>
