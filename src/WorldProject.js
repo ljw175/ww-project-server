@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
@@ -24,7 +24,7 @@ const createInitialTileMap = () => {
     let tileRow = [];
     for (let col = 0; col < mapSize; col++) {
       tileRow.push({
-        place: null, // Place type unset initially
+        place: null,
         characters: [],
         events: [],
       });
@@ -35,19 +35,42 @@ const createInitialTileMap = () => {
   return initialMap;
 };
 
+const generateUniqueName = (existingNames, baseName = "Name") => {
+  let counter = 1;
+  let newName = `${baseName}${counter}`;
+  while (existingNames.includes(newName)) {
+    counter++;
+    newName = `${baseName}${counter}`;
+  }
+  return newName;
+};
+
 const WorldProject = () => {
   const { name } = useParams();
   const dispatch = useDispatch();
 
   const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null });
-  const [copiedTile, setCopiedTile] = useState(null);
   const [detailPopupPosition, setDetailPopupPosition] = useState({ top: 0, left: 0 });
-  const [history, setHistory] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
   const [tileMap, setTileMap] = useState(createInitialTileMap());
-  const [placeTypes, setPlaceTypes] = useState([{ name: 'Void', color: '#d9d9d9', script: '', activateWithEvent: false }]);
-  const [selectedPlaceType, setSelectedPlaceType] = useState(null);
-  const [showPlaceSelectionWindow, setShowPlaceSelectionWindow] = useState(false);
+  const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
+  const [selectedTileDetails, setSelectedTileDetails] = useState({});
+  const [activeTab, setActiveTab] = useState('Map');
+  const [selectedOption, setSelectedOption] = useState('Select');
+
+  // State for managing place types, characters, and events
+  const [placeTypes, setPlaceTypes] = useState([]);
+  const [characters, setCharacters] = useState([]);
+  const [events, setEvents] = useState([]);
+
+  // State for form inputs
+  const [newPlaceType, setNewPlaceType] = useState({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
+  const [newCharacter, setNewCharacter] = useState({ name: '', details: '' });
+  const [newEvent, setNewEvent] = useState({ name: '', details: '' });
+
+  // State for editing
+  const [editingPlaceType, setEditingPlaceType] = useState(null);
+  const [editingCharacter, setEditingCharacter] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -55,11 +78,6 @@ const WorldProject = () => {
   );
 
   const worldData = useSelector(state => selectWorldDataByName(state, name));
-  const [activeTab, setActiveTab] = useState('Map');
-  const [selectedOption, setSelectedOption] = useState('Select');
-  const [isDetailPopupVisible, setDetailPopupVisible] = useState(false);
-  const [selectedTileDetails, setSelectedTileDetails] = useState({ name: '', description: '' });
-  const [stateSubTab, setStateSubTab] = useState('Place');
 
   const handleMouseDown = (e, rowIndex = null, tileIndex = null) => {
     if (e.button === 0 && selectedOption === 'Select' && rowIndex !== null && tileIndex !== null) {
@@ -70,35 +88,35 @@ const WorldProject = () => {
 
   const handleTabClick = (modeName) => {
     setActiveTab(modeName);
-    setSelectedOption('Select'); // Reset option to Select
-    setShowPlaceSelectionWindow(false); // Hide the place selection window when switching tabs
     if (modeName === 'State') {
-      setStateSubTab('Place'); // Default to 'Place' sub-tab when entering 'State' tab
+      setSelectedOption('Place'); // Default to 'Place' management when opening 'State' tab
+    } else {
+      setSelectedOption('Select');
     }
+    setSelectedTile({ rowIndex: null, tileIndex: null });
   };
 
   const handleOptionClick = (optionName) => {
     setSelectedOption(optionName);
+    setSelectedTile({ rowIndex: null, tileIndex: null });
     const tileContainer = document.querySelector('.tileMap-container');
+
+    if (!tileContainer) return;
+
     tileContainer.classList.remove('selectCursor', 'placeCursor', 'characterCursor', 'eventCursor');
 
     switch (optionName) {
       case 'Select':
         tileContainer.classList.add('selectCursor');
-        setShowPlaceSelectionWindow(false);
         break;
       case 'Place':
         tileContainer.classList.add('placeCursor');
-        setShowPlaceSelectionWindow(true);
-        setSelectedPlaceType(placeTypes.length > 1 ? placeTypes[1] : placeTypes[0]); // Default to first user-created type or 'Void'
         break;
       case 'Character':
         tileContainer.classList.add('characterCursor');
-        setShowPlaceSelectionWindow(false);
         break;
       case 'Event':
         tileContainer.classList.add('eventCursor');
-        setShowPlaceSelectionWindow(false);
         break;
       default:
         break;
@@ -115,49 +133,35 @@ const WorldProject = () => {
     }
   };
 
-  const addCharacterOrEvent = (type, rowIndex, tileIndex, newItem) => {
-    setTileMap(currentMap => {
-      const newMap = [...currentMap];
-      const tile = newMap[rowIndex][tileIndex];
-      if (!tile[type].find(item => item.name === newItem.name)) {
-        tile[type].push({ ...newItem });
-      }
-      return newMap;
-    });
-  };
-
   const handleTileClick = (rowIndex, tileIndex) => {
     if (selectedOption === 'Select') {
       setSelectedTile({ rowIndex, tileIndex });
-      setDetailPopupVisible(false); // Ensure detail popup is not shown on left click
+      setDetailPopupVisible(false);
     } else {
-      setDetailPopupVisible(false); // Hide detail popup when clicking another tile
+      setDetailPopupVisible(false);
     }
 
     setTileMap((currentMap) => {
       const newMap = JSON.parse(JSON.stringify(currentMap));
       const tile = newMap[rowIndex][tileIndex];
       const newItem = {
-        name: 'Unique Name',
+        name: generateUniqueName([]),
       };
 
       switch (selectedOption) {
         case 'Place':
           if (!tile.place) {
-            tile.place = selectedPlaceType || { name: 'Void', color: '#d9d9d9', script: '', activateWithEvent: false }; // Set the selected place type
-            saveTileMap(newMap); // Save tile map to the server
+            tile.place = { name: 'Void', color: '#ffffff', script: '', activateWithEvent: false };
           }
           break;
         case 'Character':
           if (tileMap[rowIndex][tileIndex].place) {
-            addCharacterOrEvent('characters', rowIndex, tileIndex, newItem);
-            saveTileMap(newMap); // Save tile map to the server
+            tile.characters.push(newItem);
           }
           break;
         case 'Event':
           if (tileMap[rowIndex][tileIndex].place) {
-            addCharacterOrEvent('events', rowIndex, tileIndex, newItem);
-            saveTileMap(newMap); // Save tile map to the server
+            tile.events.push(newItem);
           }
           break;
         default:
@@ -168,142 +172,94 @@ const WorldProject = () => {
     });
   };
 
-  const saveTileMap = async (newMap) => {
-    try {
-      await axios.put(`/api/worlds/${name}`, { tileMap: newMap });
-    } catch (error) {
-      console.error("Error saving tile map", error);
+  const handleAddPlaceType = () => {
+    const name = newPlaceType.name.trim() || generateUniqueName(placeTypes.map(pt => pt.name));
+    const newType = { ...newPlaceType, name };
+    if (editingPlaceType !== null) {
+      handleUpdatePlaceType(newType);
+      return;
     }
+    setPlaceTypes([...placeTypes, newType]);
+    setNewPlaceType({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
   };
 
-  const handleDeleteTile = () => {
-    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
-      setTileMap(currentMap => {
-        const newMap = JSON.parse(JSON.stringify(currentMap));
-        const tile = newMap[selectedTile.rowIndex][selectedTile.tileIndex];
-        if (tile.place || tile.characters.length > 0 || tile.events.length > 0) {
-          setHistory([...history, currentMap]); // Save current state to history before deleting
-          setRedoStack([]); // Clear redo stack
-          tile.place = null; // Unset place type
-          tile.characters = [];
-          tile.events = [];
-          saveTileMap(newMap); // Save tile map to the server
-        }
-        return newMap;
-      });
-    }
+  const handleEditPlaceType = (index) => {
+    setEditingPlaceType(index);
+    setNewPlaceType(placeTypes[index]);
   };
 
-  const handleCopyTile = () => {
-    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
-      const tile = tileMap[selectedTile.rowIndex][selectedTile.tileIndex];
-      setCopiedTile({ ...tile });
-    }
-  };
-
-  const handleCutTile = () => {
-    if (selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
-      const tile = tileMap[selectedTile.rowIndex][selectedTile.tileIndex];
-      setCopiedTile({ ...tile });
-      handleDeleteTile(); // Delete the tile after copying it
-    }
-  };
-
-  const handlePasteTile = () => {
-    if (copiedTile && selectedTile.rowIndex !== null && selectedTile.tileIndex !== null) {
-      setTileMap(currentMap => {
-        const newMap = JSON.parse(JSON.stringify(currentMap));
-        const tile = newMap[selectedTile.rowIndex][selectedTile.tileIndex];
-        if (!tile.place && tile.characters.length === 0 && tile.events.length === 0) { // Only paste if the target tile is empty
-          setHistory([...history, currentMap]); // Save current state to history before pasting
-          setRedoStack([]); // Clear redo stack
-          newMap[selectedTile.rowIndex][selectedTile.tileIndex] = { ...copiedTile };
-          saveTileMap(newMap); // Save tile map to the server
-        }
-        return newMap;
-      });
-    }
-  };
-
-  const handleUndo = () => {
-    if (history.length > 0) {
-      const lastState = history.pop();
-      setRedoStack([...redoStack, tileMap]); // Save current state to redo stack
-      setTileMap(lastState);
-      setHistory(history);
-      saveTileMap(lastState); // Save tile map to the server
-    }
-  };
-
-  const handleRedo = () => {
-    if (redoStack.length > 0) {
-      const lastRedoState = redoStack.pop();
-      setHistory([...history, tileMap]); // Save current state to history
-      setTileMap(lastRedoState);
-      setRedoStack(redoStack);
-      saveTileMap(lastRedoState); // Save tile map to the server
-    }
-  };
-
-  const handleKeyDown = useCallback((e) => {
-    if (selectedOption === 'Select') {
-      switch (e.key) {
-        case 'Delete':
-          handleDeleteTile();
-          break;
-        case 'c':
-          if (e.ctrlKey) {
-            handleCopyTile();
-          }
-          break;
-        case 'x':
-          if (e.ctrlKey) {
-            handleCutTile();
-          }
-          break;
-        case 'v':
-          if (e.ctrlKey) {
-            handlePasteTile();
-          }
-          break;
-        case 'z':
-          if (e.ctrlKey) {
-            handleUndo();
-          }
-          break;
-        case 'y':
-          if (e.ctrlKey) {
-            handleRedo();
-          }
-          break;
-        default:
-          break;
-      }
-    }
-  }, [selectedOption, handleDeleteTile, handleCopyTile, handleCutTile, handlePasteTile, handleUndo, handleRedo]);
-
-  const handleAddPlace = () => {
-    const newPlaceType = {
-      name: `New Type ${placeTypes.length}`,
-      color: '#ffffff',
-      script: '',
-      activateWithEvent: false,
-    };
-    setPlaceTypes([...placeTypes, newPlaceType]);
-  };
-
-  const handlePlaceTypeClick = (placeType) => {
-    setSelectedPlaceType(placeType);
-  };
-
-  const handlePlaceTypeChange = (e, index) => {
-    const { name, value, type, checked } = e.target;
+  const handleUpdatePlaceType = (updatedType) => {
     const updatedPlaceTypes = [...placeTypes];
-    updatedPlaceTypes[index] = {
-      ...updatedPlaceTypes[index],
-      [name]: type === 'checkbox' ? checked : value,
-    };
+    updatedPlaceTypes[editingPlaceType] = updatedType || { ...newPlaceType };
     setPlaceTypes(updatedPlaceTypes);
+    setNewPlaceType({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
+    setEditingPlaceType(null);
+  };
+
+  const handleDeletePlaceType = (index) => {
+    const updatedPlaceTypes = [...placeTypes];
+    updatedPlaceTypes.splice(index, 1);
+    setPlaceTypes(updatedPlaceTypes);
+  };
+
+  const handleAddCharacter = () => {
+    const name = newCharacter.name.trim() || generateUniqueName(characters.map(c => c.name));
+    const newChar = { ...newCharacter, name };
+    if (editingCharacter !== null) {
+      handleUpdateCharacter(newChar);
+      return;
+    }
+    setCharacters([...characters, newChar]);
+    setNewCharacter({ name: '', details: '' });
+  };
+
+  const handleEditCharacter = (index) => {
+    setEditingCharacter(index);
+    setNewCharacter(characters[index]);
+  };
+
+  const handleUpdateCharacter = (updatedCharacter) => {
+    const updatedCharacters = [...characters];
+    updatedCharacters[editingCharacter] = updatedCharacter || { ...newCharacter };
+    setCharacters(updatedCharacters);
+    setNewCharacter({ name: '', details: '' });
+    setEditingCharacter(null);
+  };
+
+  const handleDeleteCharacter = (index) => {
+    const updatedCharacters = [...characters];
+    updatedCharacters.splice(index, 1);
+    setCharacters(updatedCharacters);
+  };
+
+  const handleAddEvent = () => {
+    const name = newEvent.name.trim() || generateUniqueName(events.map(e => e.name));
+    const newEvt = { ...newEvent, name };
+    if (editingEvent !== null) {
+      handleUpdateEvent(newEvt);
+      return;
+    }
+    setEvents([...events, newEvt]);
+    setNewEvent({ name: '', details: '' });
+  };
+
+  const handleEditEvent = (index) => {
+    setEditingEvent(index);
+    setNewEvent(events[index]);
+  };
+
+  const handleUpdateEvent = (updatedEvent) => {
+    const updatedEvents = [...events];
+    updatedEvents[editingEvent] = updatedEvent || { ...newEvent };
+    setEvents(updatedEvents);
+    setNewEvent({ name: '', details: '' });
+    setEditingEvent(null);
+  };
+
+  const handleDeleteEvent = (index) => {
+    const updatedEvents = [...events];
+    updatedEvents.splice(index, 1);
+    setEvents(updatedEvents);
   };
 
   useEffect(() => {
@@ -318,13 +274,7 @@ const WorldProject = () => {
       };
       fetchWorldData();
     }
-
-    window.addEventListener('keydown', handleKeyDown); // Add keydown event listener to the window object
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown); // Remove keydown event listener from the window object
-    };
-  }, [name, dispatch, handleKeyDown]);
+  }, [name, dispatch]);
 
   useEffect(() => {
     if (worldData?.tileMap) {
@@ -382,21 +332,6 @@ const WorldProject = () => {
               <img src={EventLogo} alt="Event" className={styles.eventButtonIcon} /> Event
             </button>
           </div>
-          {selectedOption === 'Place' && showPlaceSelectionWindow && (
-            <div className={`${styles.placeSelectionWindow}`}>
-              {placeTypes.map((placeType, index) => (
-                <div
-                  key={index}
-                  className={styles.placeTypeIcon}
-                  style={{ backgroundColor: placeType.color }}
-                  onClick={() => handlePlaceTypeClick(placeType)}
-                  title={placeType.name}
-                >
-                  {placeType.name}
-                </div>
-              ))}
-            </div>
-          )}
           <div
             className={`tileMap-container ${styles.tileMapContainer}`}
             onMouseDown={(e) => handleMouseDown(e)}
@@ -433,84 +368,161 @@ const WorldProject = () => {
           <div className="options">
             <button
               key="Place"
-              className={`${styles.optionButton} ${stateSubTab === 'Place' ? styles.optionButtonClicked : ''}`}
-              onClick={() => setStateSubTab('Place')}
+              className={`${styles.optionButton} ${selectedOption === 'Place' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Place')}
             >
               <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon} /> Place
             </button>
             <button
               key="Character"
-              className={`${styles.optionButton} ${stateSubTab === 'Character' ? styles.optionButtonClicked : ''}`}
-              onClick={() => setStateSubTab('Character')}
+              className={`${styles.optionButton} ${selectedOption === 'Character' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Character')}
             >
               <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon} /> Character
             </button>
             <button
               key="Event"
-              className={`${styles.optionButton} ${stateSubTab === 'Event' ? styles.optionButtonClicked : ''}`}
-              onClick={() => setStateSubTab('Event')}
+              className={`${styles.optionButton} ${selectedOption === 'Event' ? styles.optionButtonClicked : ''}`}
+              onClick={() => handleOptionClick('Event')}
             >
               <img src={EventLogo} alt="Event" className={styles.eventButtonIcon} /> Event
             </button>
           </div>
-          {stateSubTab === 'Place' && (
+          {selectedOption === 'Place' && (
             <div>
-              <h3>Places</h3>
-              <button onClick={handleAddPlace}>Add Place</button>
+              <h3>Place Types</h3>
               {placeTypes.map((placeType, index) => (
-                <div key={index} className="place-type">
-                  <h4>{placeType.name}</h4>
+                <div key={index}>
                   <label>
                     Name:
                     <input
                       type="text"
-                      name="name"
-                      value={placeType.name}
-                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                      value={editingPlaceType === index ? newPlaceType.name : placeType.name}
+                      onChange={(e) => {
+                        if (editingPlaceType === index) {
+                          setNewPlaceType({ ...newPlaceType, name: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditPlaceType(index)}
                     />
                   </label>
                   <label>
                     Color:
                     <input
                       type="color"
-                      name="color"
-                      value={placeType.color}
-                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                      value={editingPlaceType === index ? newPlaceType.color : placeType.color}
+                      onChange={(e) => {
+                        if (editingPlaceType === index) {
+                          setNewPlaceType({ ...newPlaceType, color: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditPlaceType(index)}
                     />
                   </label>
                   <label>
                     Script:
                     <textarea
-                      name="script"
-                      value={placeType.script}
-                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                      value={editingPlaceType === index ? newPlaceType.script : placeType.script}
+                      onChange={(e) => {
+                        if (editingPlaceType === index) {
+                          setNewPlaceType({ ...newPlaceType, script: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditPlaceType(index)}
                     />
                   </label>
                   <label>
                     Activate with Event:
                     <input
                       type="checkbox"
-                      name="activateWithEvent"
-                      checked={placeType.activateWithEvent}
-                      onChange={(e) => handlePlaceTypeChange(e, index)}
+                      checked={editingPlaceType === index ? newPlaceType.activateWithEvent : placeType.activateWithEvent}
+                      onChange={(e) => {
+                        if (editingPlaceType === index) {
+                          setNewPlaceType({ ...newPlaceType, activateWithEvent: e.target.checked });
+                        }
+                      }}
+                      onFocus={() => handleEditPlaceType(index)}
                     />
                   </label>
+                  {editingPlaceType === index && <button onClick={handleUpdatePlaceType}>Save</button>}
+                  <button onClick={() => handleDeletePlaceType(index)}>Delete</button>
                 </div>
               ))}
+              <button onClick={handleAddPlaceType}>{editingPlaceType !== null ? 'Update' : 'Add'} Place Type</button>
             </div>
           )}
-          {stateSubTab === 'Character' && (
+          {selectedOption === 'Character' && (
             <div>
               <h3>Characters</h3>
-              <button>Add Character</button>
-              {/* List and manage characters here */}
+              {characters.map((character, index) => (
+                <div key={index}>
+                  <label>
+                    Name:
+                    <input
+                      type="text"
+                      value={editingCharacter === index ? newCharacter.name : character.name}
+                      onChange={(e) => {
+                        if (editingCharacter === index) {
+                          setNewCharacter({ ...newCharacter, name: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditCharacter(index)}
+                    />
+                  </label>
+                  <label>
+                    Details:
+                    <textarea
+                      value={editingCharacter === index ? newCharacter.details : character.details}
+                      onChange={(e) => {
+                        if (editingCharacter === index) {
+                          setNewCharacter({ ...newCharacter, details: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditCharacter(index)}
+                    />
+                  </label>
+                  {editingCharacter === index && <button onClick={handleUpdateCharacter}>Save</button>}
+                  <button onClick={() => handleDeleteCharacter(index)}>Delete</button>
+                </div>
+              ))}
+              <button onClick={handleAddCharacter}>{editingCharacter !== null ? 'Update' : 'Add'} Character</button>
             </div>
           )}
-          {stateSubTab === 'Event' && (
+          {selectedOption === 'Event' && (
             <div>
               <h3>Events</h3>
-              <button>Add Event</button>
-              {/* List and manage events here */}
+              {events.map((event, index) => (
+                <div key={index}>
+                  <label>
+                    Name:
+                    <input
+                      type="text"
+                      value={editingEvent === index ? newEvent.name : event.name}
+                      onChange={(e) => {
+                        if (editingEvent === index) {
+                          setNewEvent({ ...newEvent, name: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditEvent(index)}
+                    />
+                  </label>
+                  <label>
+                    Details:
+                    <textarea
+                      value={editingEvent === index ? newEvent.details : event.details}
+                      onChange={(e) => {
+                        if (editingEvent === index) {
+                          setNewEvent({ ...newEvent, details: e.target.value });
+                        }
+                      }}
+                      onFocus={() => handleEditEvent(index)}
+                    />
+                  </label>
+                  {editingEvent === index && <button onClick={handleUpdateEvent}>Save</button>}
+                  <button onClick={() => handleDeleteEvent(index)}>Delete</button>
+                </div>
+              ))}
+              <button onClick={handleAddEvent}>{editingEvent !== null ? 'Update' : 'Add'} Event</button>
             </div>
           )}
         </div>
@@ -518,22 +530,23 @@ const WorldProject = () => {
       {isDetailPopupVisible && (
         <div className={styles.detailPopup} style={{ top: detailPopupPosition.top, left: detailPopupPosition.left }}>
           <h2>Tile Details</h2>
-          <p>Name (Place): {selectedTileDetails.place?.name || 'N/A'}</p>
-          <p>Description (Place): {selectedTileDetails.place?.details || 'N/A'}</p>
+          <p>Place Type: {selectedTileDetails.place?.name || 'N/A'}</p>
           <h3>Characters:</h3>
-          {selectedTileDetails.characters?.map((char, index) => (
-            <div key={index}>
-              <p>Name: {char.name}</p>
-              <p>Description: {char.details}</p>
-            </div>
-          ))}
+          {selectedTileDetails.characters?.length > 0 ? (
+            selectedTileDetails.characters.map((char, index) => (
+              <p key={index}>{index + 1}. {char.name}</p>
+            ))
+          ) : (
+            <p>No characters</p>
+          )}
           <h3>Events:</h3>
-          {selectedTileDetails.events?.map((event, index) => (
-            <div key={index}>
-              <p>Name: {event.name}</p>
-              <p>Description: {event.details}</p>
-            </div>
-          ))}
+          {selectedTileDetails.events?.length > 0 ? (
+            selectedTileDetails.events.map((event, index) => (
+              <p key={index}>{event.name}</p>
+            ))
+          ) : (
+            <p>No events</p>
+          )}
           <button onClick={() => setDetailPopupVisible(false)}>Close</button>
         </div>
       )}
