@@ -64,8 +64,8 @@ const WorldProject = () => {
 
   // State for form inputs
   const [newPlaceType, setNewPlaceType] = useState({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
-  const [newCharacter, setNewCharacter] = useState({ name: '', details: '' });
-  const [newEvent, setNewEvent] = useState({ name: '', details: '' });
+  const [newCharacter, setNewCharacter] = useState({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
+  const [newEvent, setNewEvent] = useState({ name: '', triggers: [{ type: '', value: '' }], script: '' });
 
   // State for editing
   const [editingPlaceType, setEditingPlaceType] = useState(null);
@@ -175,10 +175,6 @@ const WorldProject = () => {
   const handleAddPlaceType = () => {
     const name = newPlaceType.name.trim() || generateUniqueName(placeTypes.map(pt => pt.name));
     const newType = { ...newPlaceType, name };
-    if (editingPlaceType !== null) {
-      handleUpdatePlaceType(newType);
-      return;
-    }
     setPlaceTypes([...placeTypes, newType]);
     setNewPlaceType({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
   };
@@ -205,12 +201,8 @@ const WorldProject = () => {
   const handleAddCharacter = () => {
     const name = newCharacter.name.trim() || generateUniqueName(characters.map(c => c.name));
     const newChar = { ...newCharacter, name };
-    if (editingCharacter !== null) {
-      handleUpdateCharacter(newChar);
-      return;
-    }
     setCharacters([...characters, newChar]);
-    setNewCharacter({ name: '', details: '' });
+    setNewCharacter({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
   };
 
   const handleEditCharacter = (index) => {
@@ -222,7 +214,7 @@ const WorldProject = () => {
     const updatedCharacters = [...characters];
     updatedCharacters[editingCharacter] = updatedCharacter || { ...newCharacter };
     setCharacters(updatedCharacters);
-    setNewCharacter({ name: '', details: '' });
+    setNewCharacter({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
     setEditingCharacter(null);
   };
 
@@ -235,12 +227,8 @@ const WorldProject = () => {
   const handleAddEvent = () => {
     const name = newEvent.name.trim() || generateUniqueName(events.map(e => e.name));
     const newEvt = { ...newEvent, name };
-    if (editingEvent !== null) {
-      handleUpdateEvent(newEvt);
-      return;
-    }
     setEvents([...events, newEvt]);
-    setNewEvent({ name: '', details: '' });
+    setNewEvent({ name: '', triggers: [{ type: '', value: '' }], script: '' });
   };
 
   const handleEditEvent = (index) => {
@@ -252,7 +240,7 @@ const WorldProject = () => {
     const updatedEvents = [...events];
     updatedEvents[editingEvent] = updatedEvent || { ...newEvent };
     setEvents(updatedEvents);
-    setNewEvent({ name: '', details: '' });
+    setNewEvent({ name: '', triggers: [{ type: '', value: '' }], script: '' });
     setEditingEvent(null);
   };
 
@@ -260,6 +248,19 @@ const WorldProject = () => {
     const updatedEvents = [...events];
     updatedEvents.splice(index, 1);
     setEvents(updatedEvents);
+  };
+
+  const handleAddTrigger = () => {
+    setNewEvent(prevState => ({
+      ...prevState,
+      triggers: [...prevState.triggers, { type: '', value: '' }]
+    }));
+  };
+
+  const handleTriggerChange = (index, key, value) => {
+    const updatedTriggers = [...newEvent.triggers];
+    updatedTriggers[index][key] = value;
+    setNewEvent({ ...newEvent, triggers: updatedTriggers });
   };
 
   useEffect(() => {
@@ -389,141 +390,248 @@ const WorldProject = () => {
             </button>
           </div>
           {selectedOption === 'Place' && (
-            <div>
-              <h3>Place Types</h3>
-              {placeTypes.map((placeType, index) => (
-                <div key={index}>
-                  <label>
-                    Name:
-                    <input
-                      type="text"
-                      value={editingPlaceType === index ? newPlaceType.name : placeType.name}
-                      onChange={(e) => {
-                        if (editingPlaceType === index) {
-                          setNewPlaceType({ ...newPlaceType, name: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditPlaceType(index)}
-                    />
-                  </label>
-                  <label>
-                    Color:
-                    <input
-                      type="color"
-                      value={editingPlaceType === index ? newPlaceType.color : placeType.color}
-                      onChange={(e) => {
-                        if (editingPlaceType === index) {
-                          setNewPlaceType({ ...newPlaceType, color: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditPlaceType(index)}
-                    />
-                  </label>
-                  <label>
-                    Script:
-                    <textarea
-                      value={editingPlaceType === index ? newPlaceType.script : placeType.script}
-                      onChange={(e) => {
-                        if (editingPlaceType === index) {
-                          setNewPlaceType({ ...newPlaceType, script: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditPlaceType(index)}
-                    />
-                  </label>
-                  <label>
-                    Activate with Event:
-                    <input
-                      type="checkbox"
-                      checked={editingPlaceType === index ? newPlaceType.activateWithEvent : placeType.activateWithEvent}
-                      onChange={(e) => {
-                        if (editingPlaceType === index) {
-                          setNewPlaceType({ ...newPlaceType, activateWithEvent: e.target.checked });
-                        }
-                      }}
-                      onFocus={() => handleEditPlaceType(index)}
-                    />
-                  </label>
-                  {editingPlaceType === index && <button onClick={handleUpdatePlaceType}>Save</button>}
-                  <button onClick={() => handleDeletePlaceType(index)}>Delete</button>
-                </div>
-              ))}
-              <button onClick={handleAddPlaceType}>{editingPlaceType !== null ? 'Update' : 'Add'} Place Type</button>
-            </div>
+            <>
+              <div className={styles.dataSection}>
+                <button onClick={handleAddPlaceType} className={`${styles.dataButton} ${styles.addButton}`}>Add Place Type</button>
+                <h3>Place Types</h3>
+                {placeTypes.map((placeType, index) => (
+                  <div key={index} className={styles.dataRow}>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.dataLabel}>
+                        Name:
+                        <input
+                          type="text"
+                          value={editingPlaceType === index ? newPlaceType.name : placeType.name}
+                          onChange={(e) => {
+                            if (editingPlaceType === index) {
+                              setNewPlaceType({ ...newPlaceType, name: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditPlaceType(index)}
+                          className={styles.dataInput}
+                        />
+                      </label>
+                      <label className={styles.dataLabel}>
+                        Color:
+                        <input
+                          type="color"
+                          value={editingPlaceType === index ? newPlaceType.color : placeType.color}
+                          onChange={(e) => {
+                            if (editingPlaceType === index) {
+                              setNewPlaceType({ ...newPlaceType, color: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditPlaceType(index)}
+                          className={styles.colorInput}
+                        />
+                      </label>
+                      <label className={styles.dataLabel}>
+                        Activate with Event:
+                        <input
+                          type="checkbox"
+                          checked={editingPlaceType === index ? newPlaceType.activateWithEvent : placeType.activateWithEvent}
+                          onChange={(e) => {
+                            if (editingPlaceType === index) {
+                              setNewPlaceType({ ...newPlaceType, activateWithEvent: e.target.checked });
+                            }
+                          }}
+                          onFocus={() => handleEditPlaceType(index)}
+                          className={styles.checkboxInput}
+                        />
+                      </label>
+                    </div>
+                    <label className={styles.dataLabel}>
+                      Script:
+                      <textarea
+                        value={editingPlaceType === index ? newPlaceType.script : placeType.script}
+                        onChange={(e) => {
+                          if (editingPlaceType === index) {
+                            setNewPlaceType({ ...newPlaceType, script: e.target.value });
+                          }
+                        }}
+                        onFocus={() => handleEditPlaceType(index)}
+                        className={styles.dataTextarea}
+                      />
+                    </label>
+                    {editingPlaceType === index && <button onClick={handleUpdatePlaceType} className={styles.dataButton}>Update</button>}
+                    <button onClick={() => handleDeletePlaceType(index)} className={styles.dataButton}>Delete</button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           {selectedOption === 'Character' && (
-            <div>
-              <h3>Characters</h3>
-              {characters.map((character, index) => (
-                <div key={index}>
-                  <label>
-                    Name:
-                    <input
-                      type="text"
-                      value={editingCharacter === index ? newCharacter.name : character.name}
-                      onChange={(e) => {
-                        if (editingCharacter === index) {
-                          setNewCharacter({ ...newCharacter, name: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditCharacter(index)}
-                    />
-                  </label>
-                  <label>
-                    Details:
-                    <textarea
-                      value={editingCharacter === index ? newCharacter.details : character.details}
-                      onChange={(e) => {
-                        if (editingCharacter === index) {
-                          setNewCharacter({ ...newCharacter, details: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditCharacter(index)}
-                    />
-                  </label>
-                  {editingCharacter === index && <button onClick={handleUpdateCharacter}>Save</button>}
-                  <button onClick={() => handleDeleteCharacter(index)}>Delete</button>
-                </div>
-              ))}
-              <button onClick={handleAddCharacter}>{editingCharacter !== null ? 'Update' : 'Add'} Character</button>
-            </div>
+            <>
+              <div className={styles.dataSection}>
+                <button onClick={handleAddCharacter} className={`${styles.dataButton} ${styles.addButton}`}>Add Character</button>
+                <h3>Characters</h3>
+                {characters.map((character, index) => (
+                  <div key={index} className={styles.dataRow}>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.dataLabel}>
+                        Name:
+                        <input
+                          type="text"
+                          value={editingCharacter === index ? newCharacter.name : character.name}
+                          onChange={(e) => {
+                            if (editingCharacter === index) {
+                              setNewCharacter({ ...newCharacter, name: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditCharacter(index)}
+                          className={styles.dataInput}
+                        />
+                      </label>
+                      <label className={styles.dataLabel}>
+                        Race:
+                        <input
+                          type="text"
+                          value={editingCharacter === index ? newCharacter.race : character.race}
+                          onChange={(e) => {
+                            if (editingCharacter === index) {
+                              setNewCharacter({ ...newCharacter, race: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditCharacter(index)}
+                          className={styles.dataInput}
+                        />
+                      </label>
+                      <label className={styles.dataLabel}>
+                        Sex:
+                        <select
+                          value={editingCharacter === index ? newCharacter.sex : character.sex}
+                          onChange={(e) => {
+                            if (editingCharacter === index) {
+                              setNewCharacter({ ...newCharacter, sex: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditCharacter(index)}
+                          className={styles.dataInput}
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="None">None</option>
+                          <option value="Hermaphrodite">Hermaphrodite</option>
+                        </select>
+                      </label>
+                      <label className={styles.dataLabel}>
+                        Age:
+                        <input
+                          type="number"
+                          value={editingCharacter === index ? newCharacter.age : character.age}
+                          onChange={(e) => {
+                            if (editingCharacter === index) {
+                              setNewCharacter({ ...newCharacter, age: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditCharacter(index)}
+                          className={styles.dataInput}
+                        />
+                      </label>
+                    </div>
+                    <label className={styles.dataLabel}>
+                      Personality:
+                      <textarea
+                        value={editingCharacter === index ? newCharacter.personality : character.personality}
+                        onChange={(e) => {
+                          if (editingCharacter === index) {
+                            setNewCharacter({ ...newCharacter, personality: e.target.value });
+                          }
+                        }}
+                        onFocus={() => handleEditCharacter(index)}
+                        className={styles.dataTextarea}
+                      />
+                    </label>
+                    <label className={styles.dataLabel}>
+                      Alignment:
+                      <textarea
+                        value={editingCharacter === index ? newCharacter.alignment : character.alignment}
+                        onChange={(e) => {
+                          if (editingCharacter === index) {
+                            setNewCharacter({ ...newCharacter, alignment: e.target.value });
+                          }
+                        }}
+                        onFocus={() => handleEditCharacter(index)}
+                        className={styles.dataTextarea}
+                      />
+                    </label>
+                    {editingCharacter === index && <button onClick={handleUpdateCharacter} className={styles.dataButton}>Update</button>}
+                    <button onClick={() => handleDeleteCharacter(index)} className={styles.dataButton}>Delete</button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           {selectedOption === 'Event' && (
-            <div>
-              <h3>Events</h3>
-              {events.map((event, index) => (
-                <div key={index}>
-                  <label>
-                    Name:
-                    <input
-                      type="text"
-                      value={editingEvent === index ? newEvent.name : event.name}
-                      onChange={(e) => {
-                        if (editingEvent === index) {
-                          setNewEvent({ ...newEvent, name: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditEvent(index)}
-                    />
-                  </label>
-                  <label>
-                    Details:
-                    <textarea
-                      value={editingEvent === index ? newEvent.details : event.details}
-                      onChange={(e) => {
-                        if (editingEvent === index) {
-                          setNewEvent({ ...newEvent, details: e.target.value });
-                        }
-                      }}
-                      onFocus={() => handleEditEvent(index)}
-                    />
-                  </label>
-                  {editingEvent === index && <button onClick={handleUpdateEvent}>Save</button>}
-                  <button onClick={() => handleDeleteEvent(index)}>Delete</button>
-                </div>
-              ))}
-              <button onClick={handleAddEvent}>{editingEvent !== null ? 'Update' : 'Add'} Event</button>
-            </div>
+            <>
+              <div className={styles.dataSection}>
+                <button onClick={handleAddEvent} className={`${styles.dataButton} ${styles.addButton}`}>Add Event</button>
+                <h3>Events</h3>
+                {events.map((event, index) => (
+                  <div key={index} className={styles.dataRow}>
+                    <div className={styles.inputGroup}>
+                      <label className={styles.dataLabel}>
+                        Name:
+                        <input
+                          type="text"
+                          value={editingEvent === index ? newEvent.name : event.name}
+                          onChange={(e) => {
+                            if (editingEvent === index) {
+                              setNewEvent({ ...newEvent, name: e.target.value });
+                            }
+                          }}
+                          onFocus={() => handleEditEvent(index)}
+                          className={styles.dataInput}
+                        />
+                      </label>
+                    </div>
+                    <div className={styles.inputGroup}>
+                      {editingEvent === index &&
+                        newEvent.triggers.map((trigger, triggerIndex) => (
+                          <div key={triggerIndex} className={styles.triggerRow}>
+                            <select
+                              value={trigger.type}
+                              onChange={(e) => handleTriggerChange(triggerIndex, 'type', e.target.value)}
+                              className={styles.triggerTypeSelect}
+                            >
+                              <option value="">Select Trigger</option>
+                              <option value="Who">Who</option>
+                              <option value="When">When</option>
+                              <option value="Where">Where</option>
+                              <option value="What">What</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={trigger.value}
+                              onChange={(e) => handleTriggerChange(triggerIndex, 'value', e.target.value)}
+                              placeholder={`Trigger ${triggerIndex + 1} Value`}
+                              className={styles.triggerValueInput}
+                            />
+                          </div>
+                        ))}
+                      {editingEvent === index && (
+                        <button onClick={handleAddTrigger} className={styles.addTriggerButton}>+</button>
+                      )}
+                    </div>
+                    <label className={styles.dataLabel}>
+                      Script:
+                      <textarea
+                        value={editingEvent === index ? newEvent.script : event.script}
+                        onChange={(e) => {
+                          if (editingEvent === index) {
+                            setNewEvent({ ...newEvent, script: e.target.value });
+                          }
+                        }}
+                        onFocus={() => handleEditEvent(index)}
+                        className={styles.dataTextarea}
+                      />
+                    </label>
+                    {editingEvent === index && <button onClick={handleUpdateEvent} className={styles.dataButton}>Update</button>}
+                    <button onClick={() => handleDeleteEvent(index)} className={styles.dataButton}>Delete</button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -547,7 +655,7 @@ const WorldProject = () => {
           ) : (
             <p>No events</p>
           )}
-          <button onClick={() => setDetailPopupVisible(false)}>Close</button>
+          <button onClick={() => setDetailPopupVisible(false)} className={styles.dataButton}>Close</button>
         </div>
       )}
     </div>
