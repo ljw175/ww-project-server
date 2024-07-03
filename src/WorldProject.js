@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
@@ -14,6 +14,7 @@ import CharacterTile from './images/Character.png';
 import CharacterLogo from './images/Character.png';
 import EventTile from './images/Event.png';
 import EventLogo from './images/Event.png';
+import PlayerCharacterImg from './images/PlayerCharacter.png';
 import TileSelected from './images/TileSelected.png';
 
 const createInitialTileMap = () => {
@@ -48,6 +49,7 @@ const generateUniqueName = (existingNames, baseName = "Name") => {
 const WorldProject = () => {
   const { name } = useParams();
   const dispatch = useDispatch();
+  const contextMenuRef = useRef(null);
 
   const [selectedTile, setSelectedTile] = useState({ rowIndex: null, tileIndex: null });
   const [detailPopupPosition, setDetailPopupPosition] = useState({ top: 0, left: 0 });
@@ -56,10 +58,13 @@ const WorldProject = () => {
   const [selectedTileDetails, setSelectedTileDetails] = useState({});
   const [activeTab, setActiveTab] = useState('Map');
   const [selectedOption, setSelectedOption] = useState('Select');
+  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
+  const [isContextMenuVisible, setContextMenuVisible] = useState(false);
+  const [isCharacterContextMenuVisible, setCharacterContextMenuVisible] = useState(false);
 
   // State for managing place types, characters, and events
   const [placeTypes, setPlaceTypes] = useState([]);
-  const [characters, setCharacters] = useState([]);
+  const [characters, setCharacters] = useState([{ name: 'PlayerCharacter', race: '', sex: '', age: '', personality: '', alignment: '' }]);
   const [events, setEvents] = useState([]);
 
   // State for form inputs
@@ -263,6 +268,83 @@ const WorldProject = () => {
     setNewEvent({ ...newEvent, triggers: updatedTriggers });
   };
 
+  const handlePlaceModeRightClick = (e) => {
+    e.preventDefault();
+    if (selectedOption === 'Place') {
+      setContextMenuPosition({ top: e.clientY, left: e.clientX });
+      setContextMenuVisible(true);
+    }
+  };
+
+  const handleCharacterModeRightClick = (e) => {
+    e.preventDefault();
+    if (selectedOption === 'Character') {
+      setContextMenuPosition({ top: e.clientY, left: e.clientX });
+      setCharacterContextMenuVisible(true);
+    }
+  };
+
+  const handleSelectPlaceType = (placeType) => {
+    setSelectedTile((prev) => {
+      if (prev.rowIndex !== null && prev.tileIndex !== null) {
+        const newMap = [...tileMap];
+        newMap[prev.rowIndex][prev.tileIndex].place = placeType;
+        setTileMap(newMap);
+      }
+      return prev;
+    });
+    setContextMenuVisible(false);
+  };
+
+  const handleSelectCharacter = (character) => {
+    setSelectedTile((prev) => {
+      if (prev.rowIndex !== null && prev.tileIndex !== null) {
+        const newMap = [...tileMap];
+        const currentTile = newMap[prev.rowIndex][prev.tileIndex];
+        if (character.name === 'PlayerCharacter') {
+          // Move PlayerCharacter if it already exists on the map
+          for (let row = 0; row < newMap.length; row++) {
+            for (let col = 0; col < newMap[row].length; col++) {
+              const index = newMap[row][col].characters.findIndex(c => c.name === 'PlayerCharacter');
+              if (index > -1) {
+                newMap[row][col].characters.splice(index, 1);
+                break;
+              }
+            }
+          }
+          currentTile.characters = [character];
+        } else {
+          const isDuplicate = currentTile.characters.some(c => c.name === character.name);
+          if (!isDuplicate) {
+            currentTile.characters.push(character);
+          }
+        }
+        setTileMap(newMap);
+      }
+      return prev;
+    });
+    setCharacterContextMenuVisible(false);
+  };
+
+  const handleClickOutside = useCallback((e) => {
+    if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+      setContextMenuVisible(false);
+      setCharacterContextMenuVisible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isContextMenuVisible || isCharacterContextMenuVisible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isContextMenuVisible, isCharacterContextMenuVisible, handleClickOutside]);
+
   useEffect(() => {
     if (!worldData) {
       const fetchWorldData = async () => {
@@ -283,6 +365,28 @@ const WorldProject = () => {
     }
   }, [worldData?.tileMap]);
 
+  useEffect(() => {
+    // Add event listeners for right-click on mode buttons
+    const placeButton = document.querySelector(`.${styles.optionButton}[key="Place"]`);
+    const characterButton = document.querySelector(`.${styles.optionButton}[key="Character"]`);
+
+    if (placeButton) {
+      placeButton.addEventListener('contextmenu', handlePlaceModeRightClick);
+    }
+    if (characterButton) {
+      characterButton.addEventListener('contextmenu', handleCharacterModeRightClick);
+    }
+
+    return () => {
+      if (placeButton) {
+        placeButton.removeEventListener('contextmenu', handlePlaceModeRightClick);
+      }
+      if (characterButton) {
+        characterButton.removeEventListener('contextmenu', handleCharacterModeRightClick);
+      }
+    };
+  }, [selectedOption]);
+
   return (
     <div className='unselectable'>
       <div className="back">
@@ -291,7 +395,7 @@ const WorldProject = () => {
         </button>
       </div>
       <div className="tabs">
-        {['Map', 'State', 'System'].map((mode) => (
+        {['Map', 'Script', 'State', 'System'].map((mode) => (
           <button
             key={mode}
             className={`${styles.modeButton} ${activeTab === mode ? styles.modeButtonClicked : ''}`}
@@ -315,6 +419,7 @@ const WorldProject = () => {
               key="Place"
               className={`${styles.optionButton} ${selectedOption === 'Place' ? styles.optionButtonClicked : ''}`}
               onClick={() => handleOptionClick('Place')}
+              onContextMenu={(e) => handlePlaceModeRightClick(e)}
             >
               <img src={PlaceLogo} alt="Place" className={styles.placeButtonIcon} /> Place
             </button>
@@ -322,6 +427,7 @@ const WorldProject = () => {
               key="Character"
               className={`${styles.optionButton} ${selectedOption === 'Character' ? styles.optionButtonClicked : ''}`}
               onClick={() => handleOptionClick('Character')}
+              onContextMenu={(e) => handleCharacterModeRightClick(e)}
             >
               <img src={CharacterLogo} alt="Character" className={styles.characterButtonIcon} /> Character
             </button>
@@ -353,7 +459,11 @@ const WorldProject = () => {
                       style={{ backgroundColor: tile.place ? tile.place.color : '#d9d9d9' }}
                     >
                       {tile.place && tile.place.name !== 'Void' && <img src={PlaceTile} alt="Place" className={styles.placeTileImage} />}
-                      {tile.characters.length > 0 && <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />}
+                      {tile.characters.some(c => c.name === 'PlayerCharacter') ? (
+                        <img src={PlayerCharacterImg} alt="PlayerCharacter" className={`${styles.characterTileImage} ${styles.overlay}`} />
+                      ) : tile.characters.length > 0 && (
+                        <img src={CharacterTile} alt="Character" className={`${styles.characterTileImage} ${styles.overlay}`} />
+                      )}
                       {tile.events.length > 0 && <img src={EventTile} alt="Event" className={`${styles.eventTileImage} ${styles.overlay}`} />}
                     </div>
                   ))}
@@ -362,6 +472,21 @@ const WorldProject = () => {
             </div>
           </div>
         </>
+      )}
+      {activeTab === 'Script' && (
+        <div className={`script-container ${styles.scriptContainer}`}>
+          <div className={styles.scriptContent}>
+            <h2 className={styles.scriptTitle}>Script Editor and Playtesting</h2>
+            {/* Add the temporary structure for the 'Script' tab here */}
+            <div className={styles.scriptText}>
+              <p>Welcome to the Script Editor! This is where you can edit scripts and playtest your TextRPG.</p>
+              {/* Example script and choices */}
+              <p className={styles.scriptExample}>You wake up in a dark room. There are two doors in front of you.</p>
+              <button className={styles.choiceButton}>Open the left door</button>
+              <button className={styles.choiceButton}>Open the right door</button>
+            </div>
+          </div>
+        </div>
       )}
       {activeTab === 'State' && (
         <div className={`state-container ${styles.stateContainer}`}>
@@ -656,6 +781,25 @@ const WorldProject = () => {
             <p>No events</p>
           )}
           <button onClick={() => setDetailPopupVisible(false)} className={styles.dataButton}>Close</button>
+        </div>
+      )}
+      {isContextMenuVisible && (
+        <div ref={contextMenuRef} className={styles.contextMenu} style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}>
+          {placeTypes.map((placeType, index) => (
+            <div key={index} className={styles.contextMenuItem} onClick={() => handleSelectPlaceType(placeType)}>
+              <div className={styles.placeTypeIcon} style={{ backgroundColor: placeType.color }}></div>
+              {placeType.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {isCharacterContextMenuVisible && (
+        <div ref={contextMenuRef} className={styles.contextMenu} style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}>
+          {characters.map((character, index) => (
+            <div key={index} className={styles.contextMenuItem} onClick={() => handleSelectCharacter(character)}>
+              {character.name}
+            </div>
+          ))}
         </div>
       )}
     </div>
