@@ -13,16 +13,16 @@ const App = () => {
   };
 
   return (
-      <div>
-        <Routes>
-          <Route 
-            path="/" 
-            element={<HomePage handleDoubleClick={handleDoubleClick} />} />
-          <Route 
-            path="/worlds/:name" 
-            element={<WorldProject />} />
-        </Routes>
-      </div>
+    <div>
+      <Routes>
+        <Route 
+          path="/" 
+          element={<HomePage handleDoubleClick={handleDoubleClick} />} />
+        <Route 
+          path="/worlds/:name" 
+          element={<WorldProject />} />
+      </Routes>
+    </div>
   );
 }
 
