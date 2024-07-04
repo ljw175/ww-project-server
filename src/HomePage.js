@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
-// Import actions
 import {
   addNewWorld as addNewWorldAction,
   selectWorld as selectWorldAction,
@@ -9,14 +8,13 @@ import {
   deleteSelectedWorld as deleteSelectedWorldAction,
   setButtonClickStatus as setButtonClickStatusAction,
   setWorlds
-} from './types/actions'; 
-// Import selectors
+} from './types/actions';
 import { 
   selectWorlds,
   selectSelectedWorldName,
   selectIsEditMode,
   selectButtonClickStatus 
-} from './types/selectors'; 
+} from './types/selectors';
 import styles from './App.module.css';
 import './App.css';
 
@@ -26,13 +24,14 @@ const HomePage = ({ handleDoubleClick }) => {
   const buttonClickStatus = useSelector(selectButtonClickStatus);
   const selectedWorldName = useSelector(selectSelectedWorldName);
   const isEditMode = useSelector(selectIsEditMode);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [worldName, setWorldName] = useState('');
 
-  // Fetch worlds on component mount
   useEffect(() => {
     const fetchWorlds = async () => {
       try {
         const response = await axios.get('/api/worlds');
-        dispatch(setWorlds(response.data)); // Assuming setWorlds is a Redux action
+        dispatch(setWorlds(response.data));
       } catch (error) {
         console.error("Error fetching worlds", error);
       }
@@ -41,21 +40,20 @@ const HomePage = ({ handleDoubleClick }) => {
   }, [dispatch]);
 
   const handleAddWorld = async () => {
-    // Use a prompt to ask for the world name
-    const inputName = window.prompt("Enter the world name:");
-    if (!inputName || !inputName.trim()) {
-      window.alert("Please enter a valid world name.");
+    if (!worldName.trim()) {
+      alert("Please enter a valid world name.");
       return;
     }
-  
-    if (worlds.some(world => world.name === inputName.trim())) {
-      window.alert("A world with that name already exists.");
+
+    if (worlds.some(world => world.name === worldName.trim())) {
+      alert("A world with that name already exists.");
       return;
     }
-  
+
     try {
-      const response = await axios.post('/api/worlds', { name: inputName.trim() });
+      const response = await axios.post('/api/worlds', { name: worldName.trim() });
       dispatch(addNewWorldAction(response.data));
+      setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding new world", error);
     }
@@ -63,38 +61,33 @@ const HomePage = ({ handleDoubleClick }) => {
 
   const handleEditWorld = async () => {
     if (selectedWorldName) {
-      // Example: Prompt the user for the new name (implement a more user-friendly approach in production)
       const newName = window.prompt("Enter the new world name:", selectedWorldName);
       if (!newName || newName.trim() === "" || newName === selectedWorldName) {
-        window.alert("Invalid or unchanged name.");
+        alert("Invalid or unchanged name.");
         return;
       }
-  
+
       try {
-        const updatedWorld = { newName: newName.trim() }; // Assuming the backend expects this structure
+        const updatedWorld = { newName: newName.trim() };
         await axios.put(`/api/worlds/${encodeURIComponent(selectedWorldName)}`, updatedWorld);
         dispatch(editSelectedWorldAction(selectedWorldName, newName));
-        // Optionally, refetch worlds list to ensure UI is in sync with the DB
       } catch (error) {
         console.error("Error editing world", error);
       }
     }
   };
-  
 
   const handleDeleteWorld = async () => {
     if (selectedWorldName && window.confirm(`Are you sure you want to delete ${selectedWorldName}?`)) {
       try {
         await axios.delete(`/api/worlds/${encodeURIComponent(selectedWorldName)}`);
         dispatch(deleteSelectedWorldAction(selectedWorldName));
-        // Optionally, refetch worlds list to ensure UI is in sync with the DB
       } catch (error) {
         console.error("Error deleting world", error);
       }
     }
   };
-  
-  // Handler for button click actions, replace this with your actual logic
+
   const handleButtonClick = (actionType) => {
     dispatch(setButtonClickStatusAction(actionType, true));
     setTimeout(() => dispatch(setButtonClickStatusAction(actionType, false)), 100);
@@ -107,7 +100,7 @@ const HomePage = ({ handleDoubleClick }) => {
         <div className="main-buttons">
           <button
             onMouseDown={() => handleButtonClick('addNewWorld')}
-            onMouseUp={handleAddWorld}
+            onMouseUp={() => setIsModalOpen(true)}
             className={`${styles.addNewWorldButton} ${buttonClickStatus.addNewWorld ? styles.buttonClicked : ''}`}
           >
             +New
@@ -142,6 +135,21 @@ const HomePage = ({ handleDoubleClick }) => {
           ))}
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close" onClick={() => setIsModalOpen(false)}>&times;</span>
+            <input 
+              type="text" 
+              value={worldName} 
+              onChange={(e) => setWorldName(e.target.value)} 
+              placeholder="Enter world name" 
+            />
+            <button onClick={handleAddWorld}>Add World</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

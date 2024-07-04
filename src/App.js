@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-enable */
 import React from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import HomePage from './HomePage';

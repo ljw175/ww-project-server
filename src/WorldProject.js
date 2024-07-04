@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
-import { setWorldData } from './types/actions';
+import { setWorldData, updateTime } from './types/actions';
 import { createSelector } from 'reselect';
 import styles from './WorldProject.module.css';
 import './WorldProject.css';
@@ -62,17 +62,14 @@ const WorldProject = () => {
   const [isContextMenuVisible, setContextMenuVisible] = useState(false);
   const [isCharacterContextMenuVisible, setCharacterContextMenuVisible] = useState(false);
 
-  // State for managing place types, characters, and events
   const [placeTypes, setPlaceTypes] = useState([]);
-  const [characters, setCharacters] = useState([{ name: 'PlayerCharacter', race: '', sex: '', age: '', personality: '', alignment: '' }]);
+  const [characters, setCharacters] = useState([{ name: 'PlayerCharacter', route: [], race: '', sex: '', age: '', personality: '', alignment: '' }]);
   const [events, setEvents] = useState([]);
 
-  // State for form inputs
   const [newPlaceType, setNewPlaceType] = useState({ name: '', color: '#ffffff', script: '', activateWithEvent: false });
-  const [newCharacter, setNewCharacter] = useState({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
+  const [newCharacter, setNewCharacter] = useState({ name: '', route: [], race: '', sex: '', age: '', personality: '', alignment: '' });
   const [newEvent, setNewEvent] = useState({ name: '', triggers: [{ type: '', value: '' }], script: '' });
 
-  // State for editing
   const [editingPlaceType, setEditingPlaceType] = useState(null);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -83,6 +80,7 @@ const WorldProject = () => {
   );
 
   const worldData = useSelector(state => selectWorldDataByName(state, name));
+  const time = useSelector(state => state.world.time);
 
   const handleMouseDown = (e, rowIndex = null, tileIndex = null) => {
     if (e.button === 0 && selectedOption === 'Select' && rowIndex !== null && tileIndex !== null) {
@@ -94,7 +92,7 @@ const WorldProject = () => {
   const handleTabClick = (modeName) => {
     setActiveTab(modeName);
     if (modeName === 'State') {
-      setSelectedOption('Place'); // Default to 'Place' management when opening 'State' tab
+      setSelectedOption('Place');
     } else {
       setSelectedOption('Select');
     }
@@ -207,7 +205,7 @@ const WorldProject = () => {
     const name = newCharacter.name.trim() || generateUniqueName(characters.map(c => c.name));
     const newChar = { ...newCharacter, name };
     setCharacters([...characters, newChar]);
-    setNewCharacter({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
+    setNewCharacter({ name: '', route: [], race: '', sex: '', age: '', personality: '', alignment: '' });
   };
 
   const handleEditCharacter = (index) => {
@@ -219,7 +217,7 @@ const WorldProject = () => {
     const updatedCharacters = [...characters];
     updatedCharacters[editingCharacter] = updatedCharacter || { ...newCharacter };
     setCharacters(updatedCharacters);
-    setNewCharacter({ name: '', race: '', sex: '', age: '', personality: '', alignment: '' });
+    setNewCharacter({ name: '', route: [], race: '', sex: '', age: '', personality: '', alignment: '' });
     setEditingCharacter(null);
   };
 
@@ -302,7 +300,6 @@ const WorldProject = () => {
         const newMap = [...tileMap];
         const currentTile = newMap[prev.rowIndex][prev.tileIndex];
         if (character.name === 'PlayerCharacter') {
-          // Move PlayerCharacter if it already exists on the map
           for (let row = 0; row < newMap.length; row++) {
             for (let col = 0; col < newMap[row].length; col++) {
               const index = newMap[row][col].characters.findIndex(c => c.name === 'PlayerCharacter');
@@ -366,7 +363,6 @@ const WorldProject = () => {
   }, [worldData?.tileMap]);
 
   useEffect(() => {
-    // Add event listeners for right-click on mode buttons
     const placeButton = document.querySelector(`.${styles.optionButton}[key="Place"]`);
     const characterButton = document.querySelector(`.${styles.optionButton}[key="Character"]`);
 
@@ -386,6 +382,11 @@ const WorldProject = () => {
       }
     };
   }, [selectedOption]);
+
+  const handleTimeChange = (e) => {
+    const newTime = parseInt(e.target.value, 10);
+    dispatch(updateTime(newTime));
+  };
 
   return (
     <div className='unselectable'>
@@ -471,16 +472,18 @@ const WorldProject = () => {
               ))}
             </div>
           </div>
+          <div className={`time-player-bar ${styles.timePlayerBar}`}>
+            <input type="range" min="0" max="100" value={time} onChange={handleTimeChange} />
+            <span>{time}</span>
+          </div>
         </>
       )}
       {activeTab === 'Script' && (
         <div className={`script-container ${styles.scriptContainer}`}>
           <div className={styles.scriptContent}>
             <h2 className={styles.scriptTitle}>Script Editor and Playtesting</h2>
-            {/* Add the temporary structure for the 'Script' tab here */}
             <div className={styles.scriptText}>
               <p>Welcome to the Script Editor! This is where you can edit scripts and playtest your TextRPG.</p>
-              {/* Example script and choices */}
               <p className={styles.scriptExample}>You wake up in a dark room. There are two doors in front of you.</p>
               <button className={styles.choiceButton}>Open the left door</button>
               <button className={styles.choiceButton}>Open the right door</button>
