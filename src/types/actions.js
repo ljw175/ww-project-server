@@ -1,5 +1,3 @@
-// actions.js
-
 export const SET_WORLDS = 'SET_WORLDS';
 export const SET_BUTTON_CLICK_STATUS = 'SET_BUTTON_CLICK_STATUS';
 export const ADD_NEW_WORLD = 'ADD_NEW_WORLD';

@@ -4,6 +4,9 @@ import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
 import { setWorldData, updateTime } from './types/actions';
 import { createSelector } from 'reselect';
+import { EditorView, basicSetup } from '@codemirror/basic-setup';
+import { javascript } from '@codemirror/lang-javascript';
+import { oneDark } from '@codemirror/theme-one-dark';
 import styles from './WorldProject.module.css';
 import './WorldProject.css';
 import BackspaceLogo from './images/Backspace.png';
@@ -15,7 +18,6 @@ import CharacterLogo from './images/Character.png';
 import EventTile from './images/Event.png';
 import EventLogo from './images/Event.png';
 import PlayerCharacterImg from './images/PlayerCharacter.png';
-import TileSelected from './images/TileSelected.png';
 
 const createInitialTileMap = () => {
   const mapSize = 100;
@@ -73,6 +75,9 @@ const WorldProject = () => {
   const [editingPlaceType, setEditingPlaceType] = useState(null);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  const [stateData, setStateData] = useState([]);
+  const [systemData, setSystemData] = useState({});
 
   const selectWorldDataByName = createSelector(
     [state => state.world.worldData, (state, name) => name],
@@ -359,6 +364,11 @@ const WorldProject = () => {
   useEffect(() => {
     if (worldData?.tileMap) {
       setTileMap(worldData.tileMap);
+      setPlaceTypes(worldData.placeTypes || []);
+      setCharacters(worldData.characters || []);
+      setEvents(worldData.events || []);
+      setStateData(worldData.stateData || []);
+      setSystemData(worldData.systemData || {});
     }
   }, [worldData?.tileMap]);
 
@@ -387,6 +397,34 @@ const WorldProject = () => {
     const newTime = parseInt(e.target.value, 10);
     dispatch(updateTime(newTime));
   };
+
+  const saveWorldData = async () => {
+    const worldDataToSave = {
+      name,
+      tileMap,
+      placeTypes,
+      characters,
+      events,
+      stateData,
+      systemData,
+    };
+
+    try {
+      await axios.put(`/api/worlds/${name}`, worldDataToSave);
+      alert('World data saved successfully!');
+    } catch (error) {
+      console.error('Error saving world data', error);
+      alert('Failed to save world data.');
+    }
+  };
+
+  useEffect(() => {
+    const editor = new EditorView({
+      doc: 'console.log("Hello, World!");',
+      extensions: [basicSetup, javascript(), oneDark],
+      parent: document.getElementById("script-editor"),
+    });
+  }, []);
 
   return (
     <div className='unselectable'>
@@ -476,12 +514,14 @@ const WorldProject = () => {
             <input type="range" min="0" max="100" value={time} onChange={handleTimeChange} />
             <span>{time}</span>
           </div>
+          <button onClick={saveWorldData} className={styles.dataButton}>Save World</button>
         </>
       )}
       {activeTab === 'Script' && (
         <div className={`script-container ${styles.scriptContainer}`}>
           <div className={styles.scriptContent}>
             <h2 className={styles.scriptTitle}>Script Editor and Playtesting</h2>
+            <div id="script-editor" className={styles.scriptEditor}></div>
             <div className={styles.scriptText}>
               <p>Welcome to the Script Editor! This is where you can edit scripts and playtest your TextRPG.</p>
               <p className={styles.scriptExample}>You wake up in a dark room. There are two doors in front of you.</p>
@@ -761,6 +801,34 @@ const WorldProject = () => {
               </div>
             </>
           )}
+        </div>
+      )}
+      {activeTab === 'System' && (
+        <div className={`system-container ${styles.systemContainer}`}>
+          <h2>System Management</h2>
+          <p>Advanced users can manage additional variables and control the narrative scale, density, and progress speed here.</p>
+          <div className={styles.systemContent}>
+            <h3>Variable Management</h3>
+            <div className={styles.dataSection}>
+              <button className={`${styles.dataButton} ${styles.addButton}`}>Add Variable</button>
+              {/* Add additional fields and logic for managing system-level variables */}
+            </div>
+            <h3>Narrative Control</h3>
+            <div className={styles.dataSection}>
+              <label className={styles.dataLabel}>
+                Minimum Time Value:
+                <input type="number" className={styles.dataInput} />
+              </label>
+              <label className={styles.dataLabel}>
+                Maximum Time Value:
+                <input type="number" className={styles.dataInput} />
+              </label>
+              <label className={styles.dataLabel}>
+                Time Playback Speed:
+                <input type="number" className={styles.dataInput} />
+              </label>
+            </div>
+          </div>
         </div>
       )}
       {isDetailPopupVisible && (

@@ -1,4 +1,3 @@
-/* eslint-enable */
 import React from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import HomePage from './HomePage';
@@ -15,12 +14,8 @@ const App = () => {
   return (
     <div>
       <Routes>
-        <Route 
-          path="/" 
-          element={<HomePage handleDoubleClick={handleDoubleClick} />} />
-        <Route 
-          path="/worlds/:name" 
-          element={<WorldProject />} />
+        <Route path="/" element={<HomePage handleDoubleClick={handleDoubleClick} />} />
+        <Route path="/worlds/:name" element={<WorldProject />} />
       </Routes>
     </div>
   );

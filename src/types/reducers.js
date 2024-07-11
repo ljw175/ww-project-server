@@ -29,7 +29,7 @@ function worldReducer(state = initialState, action) {
     case SET_WORLDS:
       return {
         ...state,
-        worlds: action.payload, // Assuming payload is the array of worlds
+        worlds: action.payload,
       };
     case SET_BUTTON_CLICK_STATUS:
       return {
