@@ -520,13 +520,14 @@ const WorldProject = () => {
       {activeTab === 'Script' && (
         <div className={`script-container ${styles.scriptContainer}`}>
           <div className={styles.scriptContent}>
-            <h2 className={styles.scriptTitle}>Script Editor and Playtesting</h2>
+            <h2 className={styles.scriptTitle}>(현재 플레이어가 위치한 'Place' tile의 'Name')</h2>
             <div id="script-editor" className={styles.scriptEditor}></div>
             <div className={styles.scriptText}>
-              <p>Welcome to the Script Editor! This is where you can edit scripts and playtest your TextRPG.</p>
-              <p className={styles.scriptExample}>You wake up in a dark room. There are two doors in front of you.</p>
-              <button className={styles.choiceButton}>Open the left door</button>
-              <button className={styles.choiceButton}>Open the right door</button>
+              <p className={styles.scriptExample}>[이곳에 해당 공간에 대한 묘사를 추가하십시오.]</p>
+              <div id="choice-container" className={styles.choiceContainer}>
+              <button className={styles.choiceButton}>동쪽으로 향한다.</button>
+              <button className={styles.choiceButton}>지도를 연다.</button>
+              </div>
             </div>
           </div>
         </div>
@@ -806,7 +807,6 @@ const WorldProject = () => {
       {activeTab === 'System' && (
         <div className={`system-container ${styles.systemContainer}`}>
           <h2>System Management</h2>
-          <p>Advanced users can manage additional variables and control the narrative scale, density, and progress speed here.</p>
           <div className={styles.systemContent}>
             <h3>Variable Management</h3>
             <div className={styles.dataSection}>
